@@ -1,0 +1,6 @@
+Databases found at below links
+FIFA 10-20: https://www.kaggle.com/datasets/mohammedessam97/fifa-1020-fut-players-dataset/data
+FIFA 21: https://www.kaggle.com/datasets/mohammedessam97/fifa-21-fut-players-dataset/data
+FIFA 22: https://www.kaggle.com/datasets/baranb/fut-22-ultimate-team-dataset
+FIFA 23: https://www.kaggle.com/datasets/lucas142129silva/fifa-23-ultimate-team-players-database
+If we want to scrape 24/25/26 in the future I think we could follow these instructions: https://www.kaggle.com/code/lucas142129silva/fifa-23-players-scraping
