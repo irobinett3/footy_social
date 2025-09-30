@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Development Plan</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      line-height: 1.6;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1, h2, h3 {
+      color: #004080;
+    }
+    pre {
+      background: #eee;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    ul {
+      margin-top: 0;
+    }
+    .section {
+      margin-bottom: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Development Plan</h1>
+
+  <div class="section">
+    <h2>Part A — EPL Schema</h2>
+
+    <h3>1. Players</h3>
+    <ul>
+      <li><strong>Attributes:</strong> player_id (BIGSERIAL), fbref_id (TEXT), full_name (TEXT), birth_date (DATE), created_at (TIMESTAMPTZ)</li>
+      <li><strong>Primary key:</strong> (player_id)</li>
+      <li><strong>Candidate keys:</strong> (fbref_id), (full_name, birth_date)</li>
+      <li><strong>FDs:</strong> player_id → fbref_id, full_name, birth_date, created_at; fbref_id → player_id, full_name, birth_date; (full_name, birth_date) → player_id</li>
+    </ul>
+
+    <h3>2. Clubs</h3>
+    <ul>
+      <li><strong>Attributes:</strong> club_id (BIGSERIAL), fbref_id (TEXT), club_name (TEXT), created_at (TIMESTAMPTZ)</li>
+      <li><strong>Primary key:</strong> (club_id)</li>
+      <li><strong>Candidate keys:</strong> (fbref_id), (club_name)</li>
+      <li><strong>FDs:</strong> club_id → fbref_id, club_name, created_at; fbref_id → club_id, club_name; club_name → club_id</li>
+    </ul>
+
+    <h3>3. Competitions</h3>
+    <ul>
+      <li><strong>Attributes:</strong> competition_id (BIGSERIAL), code (TEXT), name (TEXT)</li>
+      <li><strong>Primary key:</strong> (competition_id)</li>
+      <li><strong>Candidate key:</strong> (code)</li>
+      <li><strong>FDs:</strong> competition_id → code, name; code → competition_id, name</li>
+    </ul>
+
+    <h3>4. Seasons</h3>
+    <ul>
+      <li><strong>Attributes:</strong> season_id (BIGSERIAL), start_year (INT), end_year (INT), label (TEXT)</li>
+      <li><strong>Primary key:</strong> (season_id)</li>
+      <li><strong>Candidate key:</strong> (label)</li>
+      <li><strong>FDs:</strong> season_id → start_year, end_year, label; label → season_id, start_year, end_year; (start_year, end_year) → season_id, label</li>
+    </ul>
+
+    <h3>5. National Teams</h3>
+    <ul>
+      <li><strong>Attributes:</strong> national_team_id (BIGSERIAL), fifa_code (TEXT), country_name (TEXT)</li>
+      <li><strong>Primary key:</strong> (national_team_id)</li>
+      <li><strong>Candidate key:</strong> (fifa_code)</li>
+      <li><strong>FDs:</strong> national_team_id → fifa_code, country_name; fifa_code → national_team_id, country_name</li>
+    </ul>
+
+    <h3>6. Player–National Team Associations</h3>
+    <ul>
+      <li><strong>Attributes:</strong> player_id (BIGINT), national_team_id (BIGINT), start_date (DATE), end_date (DATE)</li>
+      <li><strong>Primary key:</strong> (player_id, national_team_id, start_date)</li>
+      <li><strong>FDs:</strong> (player_id, national_team_id, start_date) → end_date</li>
+    </ul>
+
+    <h3>7. Player Season–Club Statistics</h3>
+    <ul>
+      <li><strong>Attributes:</strong> player_id, club_id, season_id, competition_id, matches_played, starts, minutes, goals, assists</li>
+      <li><strong>Primary key:</strong> (player_id, club_id, season_id, competition_id)</li>
+      <li><strong>FDs:</strong> (player_id, club_id, season_id, competition_id) → matches_played, starts, minutes, goals, assists</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Part B — Users, Login, Favorites, Trivia, and Chat</h2>
+
+    <h3>1. Users</h3>
+    <ul>
+      <li><strong>Attributes:</strong> user_id, email, username, created_at, status</li>
+      <li><strong>Primary key:</strong> (user_id)</li>
+      <li><strong>FDs:</strong> user_id → email, username, created_at, status; email → user_id; username → user_id</li>
+    </ul>
+
+    <h3>2. User Credentials</h3>
+    <ul>
+      <li><strong>Attributes:</strong> user_id, password_hash, password_salt, password_algo, last_password_change</li>
+      <li><strong>FDs:</strong> user_id → password_hash, password_salt, password_algo, last_password_change</li>
+    </ul>
+
+    <h3>3. User Favorites</h3>
+    <ul>
+      <li><strong>Attributes:</strong> user_id, favorite_club_id, favorite_national_team_id, set_at</li>
+      <li><strong>FDs:</strong> user_id → favorite_club_id, favorite_national_team_id, set_at</li>
+    </ul>
+
+    <h3>4. Conversations</h3>
+    <ul>
+      <li><strong>Attributes:</strong> conversation_id, user_id, started_at, topic</li>
+      <li><strong>Primary key:</strong> (conversation_id)</li>
+      <li><strong>FDs:</strong> conversation_id → user_id, started_at, topic</li>
+    </ul>
+
+    <h3>5. Chat Messages</h3>
+    <ul>
+      <li><strong>Attributes:</strong> message_id, conversation_id, sender, content, created_at</li>
+      <li><strong>Primary key:</strong> (message_id)</li>
+      <li><strong>FDs:</strong> message_id → conversation_id, sender, content, created_at</li>
+    </ul>
+
+    <h3>6. Trivia Entities</h3>
+    <ul>
+      <li><strong>Games:</strong> game_id (PK), created_by, topic, started_at, ended_at</li>
+      <li><strong>Questions:</strong> question_id (PK), prompt, correct_answer, difficulty</li>
+      <li><strong>Game Questions:</strong> PK = (game_id, question_id); Alt = (game_id, position)</li>
+      <li><strong>Attempts:</strong> attempt_id (PK), Alt = (game_id, user_id, question_id)</li>
+      <li><strong>User Scores:</strong> PK = (game_id, user_id)</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Technologies</h2>
+    <p>We are using PostgreSQL as our database. Backend is built with <strong>Python + FastAPI</strong>. Frontend is built with <strong>React + JavaScript</strong>.</p>
+  </div>
+
+  <div class="section">
+    <h2>Data Sources</h2>
+    <p>Historical player and match data comes from Kaggle and OpenDatabase. Live game data comes from an API. User data and chats come from user interactions saved via backend CRUD functions.</p>
+  </div>
+
+  <div class="section">
+    <h2>Labor Division</h2>
+    <ul>
+      <li>Ian — Database</li>
+      <li>Ignacio — Backend / Middleware</li>
+      <li>Henry — Frontend</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Timeline</h2>
+    <ul>
+      <li>Oct 10 — Individual parts ready for integration</li>
+      <li>Oct 24 — Integrated system working</li>
+      <li>Nov 3 — Functional demo completed</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Project Demo URL</h2>
+    <p><a href="http://db8.cse.nd.edu/cse30246/footysocial/footysocialv1-frontend/">http://db8.cse.nd.edu/cse30246/footysocial/footysocialv1-frontend/</a></p>
+  </div>
+</body>
+</html>

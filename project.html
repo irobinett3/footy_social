@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <title>Soccer Social Network App</title>
+</head>
+<body>
+
+  <h1>Soccer Social Network App</h1>
+  <p><a href="devplan.html">View Development Plan</a></p>
+
+  <h2>Overview</h2>
+  <p>
+    Our app is a social media for soccer/football fans. It will have upcoming fixtures, chat rooms, 
+    comment sections, trivia games, and fan rooms for fans to use in anticipation/during a game.
+  </p>
+  <p>
+    The apps like this that exist are either not soccer-specific, require pay, or only provide one 
+    of scores/news and trivia. This will combine those functionalities into one free, simple-to-use app.
+  </p>
+
+  <h2>Data Sources</h2>
+  <p>
+    Most of our data will come from Kaggle/FootballData.uk. There are several different applications 
+    with game data and results that will be used to inform our models. For live data (after each game), 
+    we will pull from API-Football and other similar APIs to update our tables after games occur.
+  </p>
+
+  <h2>Basic Functions</h2>
+  <ul>
+    <li><strong>Insert:</strong>
+      <ul>
+        <li>Insert Users/Favorite Teams/etc. into db</li>
+        <li>Insert chat message/poll votes</li>
+        <li>Insert game results</li>
+        <li>Store user’s daily game performance</li>
+      </ul>
+    </li>
+    <li><strong>Update:</strong>
+      <ul>
+        <li>Update content of games each day</li>
+        <li>Update scores in live time from APIs</li>
+      </ul>
+    </li>
+    <li><strong>Delete:</strong>
+      <ul>
+        <li>Delete Chat Messages after a week (or other relevant time)</li>
+      </ul>
+    </li>
+    <li><strong>Searching DB:</strong>
+      <ul>
+        <li>Find soonest upcoming games</li>
+        <li>Find most relevant recommendations for user</li>
+        <li>Find relevant data for each game</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>Advanced Functions</h2>
+  <ul>
+    <li><strong>@Footyai requests:</strong>
+      <p>Users in chat can ask for specific stats/predictions/user sentiment. 
+      This will require NLP tasks to extract the information and then parsing 
+      our database to return values.</p>
+    </li>
+    <li><strong>Game generator:</strong>
+      <p>Instead of a moderator generating the categories for the daily games, it will be automated. 
+      For example: “Top 10 (x), game.” The model can predict “Players with the most points won while 
+      playing for Leeds United.”</p>
+    </li>
+  </ul>
+
+</body>
+</html>

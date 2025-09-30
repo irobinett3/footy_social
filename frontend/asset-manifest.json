@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/cse30246/footysocial/footysocialv1-frontend/static/css/main.00980739.css",
+    "main.js": "/cse30246/footysocial/footysocialv1-frontend/static/js/main.da687101.js",
+    "index.html": "/cse30246/footysocial/footysocialv1-frontend/index.html",
+    "main.00980739.css.map": "/cse30246/footysocial/footysocialv1-frontend/static/css/main.00980739.css.map",
+    "main.da687101.js.map": "/cse30246/footysocial/footysocialv1-frontend/static/js/main.da687101.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.00980739.css",
+    "static/js/main.da687101.js"
+  ]
+}
