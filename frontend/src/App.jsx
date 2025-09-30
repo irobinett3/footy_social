@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { AuthProvider } from "./contexts/AuthContext";
 import Navbar from "./components/navbar.jsx";
 import Sidebar from "./components/sidebar.jsx";
 import FixturesPanel from "./components/fixtures.jsx";
@@ -6,7 +7,7 @@ import TriviaPanel from "./components/trivia.jsx";
 import FanRoomPanel from "./components/fanroom.jsx";
 import { api } from "./api/api.js";
 
-export default function App() {
+function AppContent() {
   const [fixtures, setFixtures] = useState([]);
   const [fanRooms, setFanRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -40,5 +41,13 @@ export default function App() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
