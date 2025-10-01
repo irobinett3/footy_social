@@ -41,7 +41,8 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
         email=user.email,
         hashed_password=hashed_password,
         bio=user.bio,
-        avatar_url=user.avatar_url
+        avatar_url=user.avatar_url,
+        favorite_team=user.favorite_team
     )
     
     db.add(db_user)

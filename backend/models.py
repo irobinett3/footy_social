@@ -15,3 +15,4 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     bio = Column(Text, nullable=True)
     avatar_url = Column(String(255), nullable=True)
+    favorite_team = Column(String(100), nullable=True)

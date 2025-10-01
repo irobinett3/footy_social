@@ -10,7 +10,9 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
           {fixtures.map((f) => (
             <div key={f.id} className="p-2 rounded hover:bg-white cursor-pointer">
               <div className="text-sm font-medium">{f.home} vs {f.away}</div>
-              <div className="text-xs text-gray-500">{formatDate(f.date)} — {f.competition}</div>
+              <div className="text-xs text-gray-500">
+                {new Date(f.date).toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', year: 'numeric', month: 'short', day: 'numeric', second: undefined })}
+              </div>
             </div>
           ))}
         </div>
