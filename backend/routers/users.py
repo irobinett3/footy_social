@@ -52,6 +52,9 @@ async def update_user_me(
     if user_update.avatar_url is not None:
         current_user.avatar_url = user_update.avatar_url
     
+    if user_update.favorite_team is not None:
+        current_user.favorite_team = user_update.favorite_team
+
     if user_update.password is not None:
         current_user.hashed_password = get_password_hash(user_update.password)
     

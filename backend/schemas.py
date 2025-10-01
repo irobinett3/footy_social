@@ -8,6 +8,7 @@ class UserBase(BaseModel):
     email: str
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
+    favorite_team: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
@@ -18,6 +19,7 @@ class UserUpdate(BaseModel):
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
     password: Optional[str] = None
+    favorite_team: Optional[str] = None
 
 class UserResponse(UserBase):
     id: int

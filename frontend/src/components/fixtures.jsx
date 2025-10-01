@@ -16,7 +16,9 @@ export default function FixturesPanel({ fixtures }) {
               <div className="font-medium">
                 {f.home} vs {f.away}
               </div>
-              <div className="text-xs text-gray-500">{formatDate(f.date)}</div>
+              <div className="text-xs text-gray-500">
+                {new Date(f.date).toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', year: 'numeric', month: 'short', day: 'numeric' })}
+              </div>
             </div>
             <div className="text-sm text-slate-600">{f.competition}</div>
           </div>

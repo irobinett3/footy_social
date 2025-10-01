@@ -7,12 +7,43 @@ export default function AuthModal({ isOpen, onClose, mode = 'login' }) {
     username: '',
     email: '',
     password: '',
-    bio: ''
+    bio: '',
+    favorite_team: ''
   });
+  const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
   const { login, register } = useAuth();
+
+  // Load EPL teams for the select when modal opens in signup mode
+  React.useEffect(() => {
+    const loadTeams = async () => {
+      if (!isOpen || isLogin) return;
+      try {
+        const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/teams');
+        if (!res.ok) return;
+        const data = await res.json();
+        const list = (((data || {}).sports || [])[0] || {}).leagues || [];
+        const league = list[0] || {};
+        const teamsRaw = league.teams || [];
+        const mapped = teamsRaw.map((t) => {
+          const tm = t.team || {};
+          const logo = (tm.logos && tm.logos[0] && tm.logos[0].href) || '';
+          return {
+            id: tm.id,
+            name: tm.displayName || tm.name || 'Team',
+            abbreviation: tm.abbreviation,
+            logo
+          };
+        });
+        setTeams(mapped);
+      } catch (e) {
+        // ignore failures; keep select empty
+      }
+    };
+    loadTeams();
+  }, [isOpen, isLogin]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,12 +55,12 @@ export default function AuthModal({ isOpen, onClose, mode = 'login' }) {
       if (isLogin) {
         result = await login(formData.username, formData.password);
       } else {
-        result = await register(formData.username, formData.email, formData.password, formData.bio);
+        result = await register(formData.username, formData.email, formData.password, formData.bio, formData.favorite_team);
       }
 
       if (result.success) {
         onClose();
-        setFormData({ username: '', email: '', password: '', bio: '' });
+        setFormData({ username: '', email: '', password: '', bio: '', favorite_team: '' });
       } else {
         setError(result.error);
       }
@@ -50,7 +81,7 @@ export default function AuthModal({ isOpen, onClose, mode = 'login' }) {
   const toggleMode = () => {
     setIsLogin(!isLogin);
     setError('');
-    setFormData({ username: '', email: '', password: '', bio: '' });
+    setFormData({ username: '', email: '', password: '', bio: '', favorite_team: '' });
   };
 
   if (!isOpen) return null;
@@ -137,6 +168,28 @@ export default function AuthModal({ isOpen, onClose, mode = 'login' }) {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Tell us about yourself..."
               />
+            </div>
+          )}
+
+          {!isLogin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Favorite Team (Optional)
+              </label>
+              <select
+                name="favorite_team"
+                value={formData.favorite_team}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-- None selected --</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.name}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Teams loaded from the Premier League API.</p>
             </div>
           )}
 
