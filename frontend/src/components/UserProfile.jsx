@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { getTeamLogoUrlByName } from '../utils/teamLogos';
 
 export default function UserProfile({ isOpen, onClose }) {
   const { user, updateUser, logout } = useAuth();
@@ -8,11 +9,28 @@ export default function UserProfile({ isOpen, onClose }) {
     username: user?.username || '',
     email: user?.email || '',
     bio: user?.bio || '',
-    avatar_url: user?.avatar_url || ''
+    avatar_url: user?.avatar_url || '',
+    favorite_team: user?.favorite_team || ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [favoriteLogo, setFavoriteLogo] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (user?.favorite_team) {
+        const url = await getTeamLogoUrlByName(user.favorite_team);
+        if (mounted) setFavoriteLogo(url);
+      } else {
+        if (mounted) setFavoriteLogo('');
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.favorite_team]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,7 +70,8 @@ export default function UserProfile({ isOpen, onClose }) {
       username: user?.username || '',
       email: user?.email || '',
       bio: user?.bio || '',
-      avatar_url: user?.avatar_url || ''
+      avatar_url: user?.avatar_url || '',
+      favorite_team: user?.favorite_team || ''
     });
     setIsEditing(true);
     setError('');
@@ -60,6 +79,8 @@ export default function UserProfile({ isOpen, onClose }) {
   };
 
   if (!isOpen) return null;
+
+  const avatarSrc = user?.avatar_url || favoriteLogo || '';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -89,9 +110,9 @@ export default function UserProfile({ isOpen, onClose }) {
         {!isEditing ? (
           <div className="space-y-4">
             <div className="text-center">
-              <div className="w-20 h-20 bg-gray-300 rounded-full mx-auto mb-4 flex items-center justify-center">
-                {user?.avatar_url ? (
-                  <img src={user.avatar_url} alt="Avatar" className="w-20 h-20 rounded-full" />
+              <div className="w-20 h-20 bg-gray-300 rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
+                {avatarSrc ? (
+                  <img src={avatarSrc} alt="Avatar" className="w-20 h-20 rounded-full object-cover" />
                 ) : (
                   <span className="text-2xl text-gray-600">
                     {user?.username?.charAt(0).toUpperCase()}
@@ -100,6 +121,9 @@ export default function UserProfile({ isOpen, onClose }) {
               </div>
               <h3 className="text-xl font-semibold">{user?.username}</h3>
               <p className="text-gray-600">{user?.email}</p>
+              {user?.favorite_team && (
+                <p className="text-sm text-gray-500">Favorite team: {user.favorite_team}</p>
+              )}
             </div>
 
             {user?.bio && (
@@ -179,6 +203,20 @@ export default function UserProfile({ isOpen, onClose }) {
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="https://example.com/avatar.jpg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Favorite Team (Optional)
+              </label>
+              <input
+                type="text"
+                name="favorite_team"
+                value={formData.favorite_team}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Arsenal"
               />
             </div>
 
