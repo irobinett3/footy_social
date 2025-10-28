@@ -35,10 +35,10 @@ export const api = {
       });
     },
     
-    register: async (username, email, password, bio = '') => {
+    register: async (first_name, last_name, username, email, password, bio = '', favorite_team = '') => {
       return makeRequest('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ username, email, password, bio }),
+        body: JSON.stringify({ first_name, last_name, username, email, password, bio, favorite_team }),
       });
     },
     

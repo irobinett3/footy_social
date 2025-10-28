@@ -6,3 +6,5 @@ python-multipart
 sqlalchemy
 pydantic
 python-dotenv
+pymysql
+cryptography

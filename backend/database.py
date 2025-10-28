@@ -5,8 +5,9 @@ from config import settings
 
 # Create database engine
 # Enable check_same_thread=False for SQLite to allow usage across threads
+# For MySQL, we don't need special connect_args
 connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
-engine = create_engine(settings.DATABASE_URL, connect_args=connect_args)
+engine = create_engine(settings.DATABASE_URL, connect_args=connect_args, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create base class for models
