@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AuthModal({ isOpen, onClose, mode = 'login' }) {
   const [isLogin, setIsLogin] = useState(mode === 'login');
+  
+  // Sync internal state with mode prop when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsLogin(mode === 'login');
+      setError('');
+      setFormData({ first_name: '', last_name: '', username: '', email: '', password: '', bio: '', favorite_team: '' });
+    }
+  }, [isOpen, mode]);
   const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
     username: '',
     email: '',
     password: '',
@@ -55,12 +66,20 @@ export default function AuthModal({ isOpen, onClose, mode = 'login' }) {
       if (isLogin) {
         result = await login(formData.username, formData.password);
       } else {
-        result = await register(formData.username, formData.email, formData.password, formData.bio, formData.favorite_team);
+        result = await register(
+          formData.first_name,
+          formData.last_name,
+          formData.username,
+          formData.email,
+          formData.password,
+          formData.bio,
+          formData.favorite_team
+        );
       }
 
       if (result.success) {
         onClose();
-        setFormData({ username: '', email: '', password: '', bio: '', favorite_team: '' });
+        setFormData({ first_name: '', last_name: '', username: '', email: '', password: '', bio: '', favorite_team: '' });
       } else {
         setError(result.error);
       }
@@ -81,7 +100,7 @@ export default function AuthModal({ isOpen, onClose, mode = 'login' }) {
   const toggleMode = () => {
     setIsLogin(!isLogin);
     setError('');
-    setFormData({ username: '', email: '', password: '', bio: '', favorite_team: '' });
+    setFormData({ first_name: '', last_name: '', username: '', email: '', password: '', bio: '', favorite_team: '' });
   };
 
   if (!isOpen) return null;
@@ -108,6 +127,41 @@ export default function AuthModal({ isOpen, onClose, mode = 'login' }) {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!isLogin && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your first name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your last name"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Username

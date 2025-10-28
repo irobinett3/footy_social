@@ -14,6 +14,7 @@ from auth import (
     get_current_active_user
 )
 from config import settings
+from utils import user_to_response
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -37,11 +38,12 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     # Create new user
     hashed_password = get_password_hash(user.password)
     db_user = User(
+        first_name=user.first_name,
+        last_name=user.last_name,
         username=user.username,
         email=user.email,
-        hashed_password=hashed_password,
+        password_hash=hashed_password,
         bio=user.bio,
-        avatar_url=user.avatar_url,
         favorite_team=user.favorite_team
     )
     
@@ -49,7 +51,8 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_user)
     
-    return db_user
+    # Convert user to response format
+    return user_to_response(db_user)
 
 @router.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -72,7 +75,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 @router.get("/me", response_model=UserResponse)
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
     """Get current user information."""
-    return current_user
+    return user_to_response(current_user)
 
 @router.post("/login-json", response_model=Token)
 async def login_json(user_credentials: UserLogin, db: Session = Depends(get_db)):

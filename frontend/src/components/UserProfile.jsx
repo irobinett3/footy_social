@@ -6,10 +6,11 @@ export default function UserProfile({ isOpen, onClose }) {
   const { user, updateUser, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
     username: user?.username || '',
     email: user?.email || '',
     bio: user?.bio || '',
-    avatar_url: user?.avatar_url || '',
     favorite_team: user?.favorite_team || ''
   });
   const [loading, setLoading] = useState(false);
@@ -67,10 +68,11 @@ export default function UserProfile({ isOpen, onClose }) {
 
   const handleEdit = () => {
     setFormData({
+      first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
       username: user?.username || '',
       email: user?.email || '',
       bio: user?.bio || '',
-      avatar_url: user?.avatar_url || '',
       favorite_team: user?.favorite_team || ''
     });
     setIsEditing(true);
@@ -80,7 +82,7 @@ export default function UserProfile({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const avatarSrc = user?.avatar_url || favoriteLogo || '';
+  const avatarSrc = favoriteLogo || '';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -115,11 +117,12 @@ export default function UserProfile({ isOpen, onClose }) {
                   <img src={avatarSrc} alt="Avatar" className="w-20 h-20 rounded-full object-cover" />
                 ) : (
                   <span className="text-2xl text-gray-600">
-                    {user?.username?.charAt(0).toUpperCase()}
+                    {user?.first_name?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase()}
                   </span>
                 )}
               </div>
-              <h3 className="text-xl font-semibold">{user?.username}</h3>
+              <h3 className="text-xl font-semibold">{user?.first_name} {user?.last_name}</h3>
+              <p className="text-gray-500 text-sm">@{user?.username}</p>
               <p className="text-gray-600">{user?.email}</p>
               {user?.favorite_team && (
                 <p className="text-sm text-gray-500">Favorite team: {user.favorite_team}</p>
@@ -150,6 +153,35 @@ export default function UserProfile({ isOpen, onClose }) {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Username
@@ -192,19 +224,6 @@ export default function UserProfile({ isOpen, onClose }) {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Avatar URL
-              </label>
-              <input
-                type="url"
-                name="avatar_url"
-                value={formData.avatar_url}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="https://example.com/avatar.jpg"
-              />
-            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
