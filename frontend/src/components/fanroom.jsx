@@ -24,7 +24,7 @@ function useWebSocketMock(roomId) {
           ts: new Date().toISOString(),
         },
       ]);
-    }, 15000);
+    }, 40000);
     return () => clearInterval(t);
   }, []);
 
