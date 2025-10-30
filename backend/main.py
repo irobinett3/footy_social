@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, get_db
 from models import Base
-from routers import auth, users
+from routers import auth, users, trivia
 from config import settings
 
 # Create database tables
@@ -27,6 +27,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(trivia.router)
 
 @app.get("/")
 async def root():

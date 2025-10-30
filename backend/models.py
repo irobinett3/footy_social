@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, Integer, DateTime, BINARY
+from sqlalchemy import Column, String, Text, Integer, DateTime, BINARY, Date
 from sqlalchemy.sql import func
 from database import Base
 import uuid
@@ -24,3 +24,13 @@ class User(Base):
         if self.user_id:
             return str(uuid.UUID(bytes=self.user_id))
         return None
+
+class Trivia(Base):
+    __tablename__ = "trivia"
+    # Primary key is the calendar date
+    id = Column(Date, primary_key=True)
+    question = Column(String(255), nullable=False)
+    correct  = Column(String(255), nullable=False)
+    wrong1   = Column(String(255), nullable=False)
+    wrong2   = Column(String(255), nullable=False)
+    wrong3   = Column(String(255), nullable=False)
