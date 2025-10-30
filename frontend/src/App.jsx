@@ -12,15 +12,21 @@ function AppContent() {
   const [fanRooms, setFanRooms] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [trivia, setTrivia] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      setFixtures(await api.fetchUpcomingFixtures());
-      setFanRooms(await api.fetchFanRooms());
-      setTrivia(await api.fetchTriviaForDay());
-    })();
-  }, []);
+  (async () => {
+    const fixturesData = await api.fetchUpcomingFixtures();
+    const fanRoomsData = await api.fetchFanRooms();
+    const triviaData = await api.fetchTriviaForDay();
+
+    console.log("Fetched trivia in App.jsx:", triviaData);
+
+    setFixtures(fixturesData);
+    setFanRooms(fanRoomsData);
+    setTrivia(triviaData);
+  })();
+}, []);
 
   return (
   <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-900 text-slate-800 overflow-hidden">
