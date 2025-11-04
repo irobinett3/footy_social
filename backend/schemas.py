@@ -1,7 +1,6 @@
 from pydantic import BaseModel, validator
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
-import uuid
 
 # User schemas
 class UserBase(BaseModel):
@@ -45,6 +44,23 @@ class UserResponse(UserBase):
     
     class Config:
         from_attributes = True
+
+# Fan room schemas
+class FanRoomResponse(BaseModel):
+    id: int
+    team_name: str
+    display_name: str
+    active_users: int
+    is_global: bool = False
+
+class FanRoomMessageResponse(BaseModel):
+    message_id: int
+    room_id: int
+    user_id: str
+    username: str
+    content: str
+    created_at: datetime
+    chat_date: date
 
 # Authentication schemas
 class Token(BaseModel):

@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from database import engine, get_db
+from database import engine, get_db, SessionLocal
 from models import Base
 from routers import auth, users, trivia
+from routers import fanrooms as fanroom_router
+from routers.fanrooms import ensure_fan_rooms_exist
 from config import settings
 
 # Create database tables
@@ -28,6 +30,14 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(trivia.router)
+app.include_router(fanroom_router.router)
+
+
+@app.on_event("startup")
+def bootstrap_fan_rooms():
+    """Ensure the default fan rooms exist."""
+    with SessionLocal() as db:
+        ensure_fan_rooms_exist(db)
 
 @app.get("/")
 async def root():
