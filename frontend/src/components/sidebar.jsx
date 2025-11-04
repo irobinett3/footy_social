@@ -13,7 +13,7 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
   );
 
   return (
-    <aside className="w-72 bg-gray-50 border-r p-4 hidden md:block">
+    <aside className="hidden md:flex md:flex-col md:flex-shrink-0 w-72 bg-gray-50 border-r p-4 h-full overflow-y-auto min-h-0">
       <section className="mb-6">
         <h3 className="font-semibold mb-3">Upcoming Fixtures</h3>
         <div className="space-y-2">
