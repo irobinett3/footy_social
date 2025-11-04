@@ -52,7 +52,7 @@ export default function TriviaPanel() {
   };
 
   return (
-    <div className="bg-white rounded shadow-sm p-4 max-w-lg mx-auto">
+    <div className="bg-white rounded shadow-sm p-4 max-w mx-auto">
       <h2 className="text-lg font-semibold mb-3">Daily Trivia</h2>
 
       <div className="p-3 border rounded">

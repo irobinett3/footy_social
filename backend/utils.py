@@ -1,8 +1,12 @@
 """
-Utility functions for the application
+Utility functions for the application.
 """
+from typing import Optional
+import uuid
+
 from schemas import UserResponse
 from models import User
+
 
 def user_to_response(user: User) -> UserResponse:
     """Convert a User model instance to UserResponse schema."""
@@ -18,3 +22,10 @@ def user_to_response(user: User) -> UserResponse:
         created_at=user.created_at,
         updated_at=user.updated_at
     )
+
+
+def uuid_bytes_to_str(value: Optional[bytes]) -> Optional[str]:
+    """Convert binary UUID bytes to string format."""
+    if value is None:
+        return None
+    return str(uuid.UUID(bytes=value))
