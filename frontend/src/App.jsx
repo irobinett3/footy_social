@@ -73,29 +73,33 @@ function MainDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-900 text-slate-800 overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-slate-100 to-blue-900 text-slate-800 flex flex-col overflow-hidden">
       <Navbar onToggleSidebar={() => setSidebarOpen((s) => !s)} />
 
-      <div className="flex">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar
           fixtures={fixtures}
           fanRooms={fanRooms}
           onSelectRoom={handleJoinFanRoom}
         />
 
-        <main className="flex-1 p-6 space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 space-y-4">
-              <FixturesPanel fixtures={fixtures} />
-              <TriviaPanel trivia={trivia} />
+        <main className="flex-1 p-6 space-y-4 flex flex-col min-h-0 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 h-full overflow-hidden">
+            <div className="lg:col-span-2 flex flex-col min-h-0 h-full">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+                <FixturesPanel fixtures={fixtures} />
+                <TriviaPanel trivia={trivia} />
+              </div>
             </div>
 
-            <aside>
-              <FanRoomPanel
-                room={globalRoom}
-                enforceFavorite={false}
-                onPresenceUpdate={handleRoomPresenceUpdate}
-              />
+            <aside className="flex flex-col h-full min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-0 h-full overflow-hidden">
+                <FanRoomPanel
+                  room={globalRoom}
+                  enforceFavorite={false}
+                  onPresenceUpdate={handleRoomPresenceUpdate}
+                />
+              </div>
             </aside>
           </div>
         </main>
@@ -159,33 +163,37 @@ function TeamFanRoomPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-900 text-slate-800 overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-slate-100 to-blue-900 text-slate-800 flex flex-col overflow-hidden">
       <Navbar onToggleSidebar={() => setSidebarOpen((s) => !s)} />
 
-      <div className="pt-16 flex">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         <Sidebar
           fixtures={fixtures}
           fanRooms={fanRooms}
           onSelectRoom={handleJoinFanRoom}
         />
 
-        <main className="flex-1 p-6 space-y-4">
+        <main className="flex-1 p-6 space-y-4 flex flex-col min-h-0 overflow-hidden">
           <button
             onClick={() => navigate(-1)}
             className="text-sm text-sky-700 underline hover:text-sky-500"
           >
             ← Back to dashboard
           </button>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2">
-              <FanRoomPanel
-                room={roomForChat}
-                onPresenceUpdate={handleRoomPresenceUpdate}
-              />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 h-full overflow-hidden">
+            <div className="lg:col-span-2 flex flex-col min-h-0 h-full">
+              <div className="flex-1 min-h-0 h-full overflow-hidden">
+                <FanRoomPanel
+                  room={roomForChat}
+                  onPresenceUpdate={handleRoomPresenceUpdate}
+                />
+              </div>
             </div>
-            <aside className="space-y-4">
-              <FixturesPanel fixtures={fixtures} />
-              <TriviaPanel trivia={trivia} />
+            <aside className="flex flex-col min-h-0 h-full overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+                <FixturesPanel fixtures={fixtures} />
+                <TriviaPanel trivia={trivia} />
+              </div>
             </aside>
           </div>
         </main>

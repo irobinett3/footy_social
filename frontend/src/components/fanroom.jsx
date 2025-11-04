@@ -237,7 +237,7 @@ export default function FanRoomPanel({
   }
 
   return (
-    <div className="flex flex-col h-full bg-white rounded shadow-sm">
+    <div className="flex flex-col h-full bg-white rounded shadow-sm overflow-hidden">
       <div className="p-4 border-b">
         <div className="flex justify-between items-center">
           <div>
