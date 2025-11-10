@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { BrowserRouter, Routes, Route, useNavigate, useParams } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import Navbar from "./components/navbar.jsx";
 import Sidebar from "./components/sidebar.jsx";
@@ -7,35 +8,98 @@ import TriviaPanel from "./components/trivia.jsx";
 import FanRoomPanel from "./components/fanroom.jsx";
 import { api } from "./api/api.js";
 
-function AppContent() {
+function useInitialAppData() {
   const [fixtures, setFixtures] = useState([]);
   const [fanRooms, setFanRooms] = useState([]);
-  const [selectedRoom, setSelectedRoom] = useState(null);
   const [trivia, setTrivia] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     (async () => {
-      setFixtures(await api.fetchUpcomingFixtures());
-      setFanRooms(await api.fetchFanRooms());
-      setTrivia(await api.fetchTriviaForDay());
+      try {
+        const [fixturesData, fanRoomsData, triviaData] = await Promise.all([
+          api.fetchUpcomingFixtures(),
+          api.fetchFanRooms(),
+          api.fetchTriviaForDay(),
+        ]);
+
+        if (!isMounted) return;
+
+        setFixtures(fixturesData);
+        setFanRooms(fanRoomsData);
+        setTrivia(triviaData);
+      } catch (error) {
+        console.error("Failed to load initial dashboard data:", error);
+      }
     })();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
+  const handleRoomPresenceUpdate = useCallback((roomId, activeUsers) => {
+    setFanRooms((prev) =>
+      prev.map((room) =>
+        room.id === roomId ? { ...room, active_users: activeUsers } : room
+      )
+    );
+  }, []);
+
+  return {
+    fixtures,
+    fanRooms,
+    trivia,
+    handleRoomPresenceUpdate,
+  };
+}
+
+function MainDashboard() {
+  const { fixtures, fanRooms, trivia, handleRoomPresenceUpdate } = useInitialAppData();
+  const [, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const globalRoom = useMemo(
+    () => fanRooms.find((room) => room.is_global),
+    [fanRooms]
+  );
+
+  const handleJoinFanRoom = useCallback(
+    (roomId) => {
+      navigate(`/fanroom/${roomId}`);
+    },
+    [navigate]
+  );
+
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800">
+    <div className="h-screen bg-gradient-to-br from-slate-100 to-blue-900 text-slate-800 flex flex-col overflow-hidden">
       <Navbar onToggleSidebar={() => setSidebarOpen((s) => !s)} />
 
-      <div className="flex">
-        <Sidebar fixtures={fixtures} fanRooms={fanRooms} onSelectRoom={setSelectedRoom} />
-        <main className="flex-1 p-6 space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 space-y-4">
-              <FixturesPanel fixtures={fixtures} />
-              <TriviaPanel trivia={trivia} />
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <Sidebar
+          fixtures={fixtures}
+          fanRooms={fanRooms}
+          onSelectRoom={handleJoinFanRoom}
+        />
+
+        <main className="flex-1 p-6 space-y-4 flex flex-col min-h-0 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 h-full overflow-hidden">
+            <div className="lg:col-span-2 flex flex-col min-h-0 h-full">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+                <FixturesPanel fixtures={fixtures} />
+                <TriviaPanel trivia={trivia} />
+              </div>
             </div>
-            <aside>
-              <FanRoomPanel roomId={selectedRoom} />
+
+            <aside className="flex flex-col h-full min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-0 h-full overflow-hidden">
+                <FanRoomPanel
+                  room={globalRoom}
+                  enforceFavorite={false}
+                  onPresenceUpdate={handleRoomPresenceUpdate}
+                />
+              </div>
             </aside>
           </div>
         </main>
@@ -44,10 +108,115 @@ function AppContent() {
   );
 }
 
+function TeamFanRoomPage() {
+  const { roomId } = useParams();
+  const numericRoomId = Number(roomId);
+  const [, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+  const {
+    fixtures,
+    fanRooms,
+    trivia,
+    handleRoomPresenceUpdate,
+  } = useInitialAppData();
+  const [fetchedRoom, setFetchedRoom] = useState(null);
+
+  const selectedRoom = useMemo(() => {
+    if (!Number.isFinite(numericRoomId)) return null;
+    return fanRooms.find((room) => room.id === numericRoomId) || null;
+  }, [fanRooms, numericRoomId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (selectedRoom || !Number.isFinite(numericRoomId)) {
+      setFetchedRoom(selectedRoom);
+      return;
+    }
+
+    (async () => {
+      try {
+        const room = await api.fetchFanRoom(numericRoomId);
+        if (!cancelled) {
+          setFetchedRoom(room);
+        }
+      } catch (error) {
+        console.error("Failed to load fan room detail:", error);
+        if (!cancelled) {
+          setFetchedRoom(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [numericRoomId, selectedRoom]);
+
+  const roomForChat = selectedRoom || fetchedRoom;
+
+  const handleJoinFanRoom = useCallback(
+    (targetRoomId) => {
+      navigate(`/fanroom/${targetRoomId}`);
+    },
+    [navigate]
+  );
+
+  return (
+    <div className="h-screen bg-gradient-to-br from-slate-100 to-blue-900 text-slate-800 flex flex-col overflow-hidden">
+      <Navbar onToggleSidebar={() => setSidebarOpen((s) => !s)} />
+
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <Sidebar
+          fixtures={fixtures}
+          fanRooms={fanRooms}
+          onSelectRoom={handleJoinFanRoom}
+        />
+
+        <main className="flex-1 p-6 space-y-4 flex flex-col min-h-0 overflow-hidden">
+          <button
+            onClick={() => navigate(-1)}
+            className="text-sm text-sky-700 underline hover:text-sky-500"
+          >
+            ← Back to dashboard
+          </button>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 h-full overflow-hidden">
+            <div className="lg:col-span-2 flex flex-col min-h-0 h-full">
+              <div className="flex-1 min-h-0 h-full overflow-hidden">
+                <FanRoomPanel
+                  room={roomForChat}
+                  onPresenceUpdate={handleRoomPresenceUpdate}
+                />
+              </div>
+            </div>
+            <aside className="flex flex-col min-h-0 h-full overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+                <FixturesPanel fixtures={fixtures} />
+                <TriviaPanel trivia={trivia} />
+              </div>
+            </aside>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<MainDashboard />} />
+      <Route path="/fanroom/:roomId" element={<TeamFanRoomPage />} />
+    </Routes>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <BrowserRouter basename={process.env.PUBLIC_URL || "/"}>
+        <AppRoutes />
+      </BrowserRouter>
     </AuthProvider>
   );
 }

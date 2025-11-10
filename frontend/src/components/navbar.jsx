@@ -45,7 +45,7 @@ export default function Navbar({ onToggleSidebar }) {
 
   return (
     <>
-      <header className="w-full bg-white shadow-md px-4 py-3 flex items-center justify-between">
+     <header className="w-full bg-gray-900 text-slate-100 shadow-md px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button className="md:hidden p-2 rounded hover:bg-gray-100" onClick={onToggleSidebar}>
             ☰
@@ -61,17 +61,17 @@ export default function Navbar({ onToggleSidebar }) {
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
               <span className="hidden sm:block text-sm text-gray-600">
-                Welcome, {user?.username}!
+                Welcome, {user?.first_name || user?.username}!
               </span>
               <button
                 onClick={handleProfileClick}
                 className="flex items-center gap-2 px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
               >
                 <div className="w-6 h-6 bg-white bg-opacity-20 rounded-full flex items-center justify-center overflow-hidden">
-                  {user?.avatar_url || favoriteLogo ? (
-                    <img src={user?.avatar_url || favoriteLogo} alt="Avatar" className="w-6 h-6 rounded-full object-cover" />
+                  {favoriteLogo ? (
+                    <img src={favoriteLogo} alt="Avatar" className="w-6 h-6 rounded-full object-cover" />
                   ) : (
-                    <span className="text-xs">{user?.username?.charAt(0).toUpperCase()}</span>
+                    <span className="text-xs">{user?.first_name?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase()}</span>
                   )}
                 </div>
                 Profile

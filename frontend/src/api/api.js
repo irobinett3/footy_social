@@ -35,10 +35,10 @@ export const api = {
       });
     },
     
-    register: async (username, email, password, bio = '') => {
+    register: async (first_name, last_name, username, email, password, bio = '', favorite_team = '') => {
       return makeRequest('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ username, email, password, bio }),
+        body: JSON.stringify({ first_name, last_name, username, email, password, bio, favorite_team }),
       });
     },
     
@@ -100,10 +100,18 @@ export const api = {
     return fixtures;
   },
 
-  fetchFanRooms: async () => [
-    { id: "room-arsenal", name: "Arsenal Fans", team: "Arsenal", participants: 124 },
-    { id: "room-leeds", name: "Leeds Fans", team: "Leeds United", participants: 44 },
-  ],
+  fetchFanRooms: async () => {
+    return makeRequest('/fanrooms');
+  },
+
+  fetchFanRoom: async (roomId) => {
+    return makeRequest(`/fanrooms/${roomId}`);
+  },
+
+  fetchFanRoomMessages: async (roomId, chatDate) => {
+    const query = chatDate ? `?chat_date=${encodeURIComponent(chatDate)}` : '';
+    return makeRequest(`/fanrooms/${roomId}/messages${query}`);
+  },
 
   fetchTriviaForDay: async () => ({
     id: "triv-20250924",
