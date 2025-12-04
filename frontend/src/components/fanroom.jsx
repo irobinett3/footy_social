@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { api } from "../api/api.js";
+import GifPicker from "./GifPicker.jsx";
 
 const buildSocketUrl = (roomId, token) =>
   `ws://localhost:8000/fanrooms/ws/${roomId}?token=${encodeURIComponent(token)}`;
@@ -18,6 +19,7 @@ export default function FanRoomPanel({
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
   const [activeUsers, setActiveUsers] = useState(room?.active_users ?? 0);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const listRef = useRef(null);
   const socketRef = useRef(null);
   const favoriteTeam = useMemo(
@@ -178,6 +180,25 @@ export default function FanRoomPanel({
     }
   };
 
+  const handleGifSelect = (gifUrl) => {
+    if (status !== "connected" || !socketRef.current) {
+      return;
+    }
+
+    try {
+      // Send GIF URL as message content
+      socketRef.current.send(JSON.stringify({ content: gifUrl }));
+    } catch (err) {
+      console.error("Failed to send GIF:", err);
+      setError("Failed to send GIF.");
+    }
+  };
+
+  // Check if message content is a GIF URL
+  const isGifUrl = (content) => {
+    return /\.gif(\?|$)/i.test(content) || /giphy\.com|gif/i.test(content);
+  };
+
   if (!user) {
     return (
       <div className="p-4 bg-white rounded shadow-sm">
@@ -267,7 +288,15 @@ export default function FanRoomPanel({
                 message.user_id === user.user_id ? "bg-sky-100 text-sky-900" : "bg-gray-100 text-gray-800"
               }`}
             >
-              {message.content}
+              {isGifUrl(message.content) ? (
+                <img
+                  src={message.content}
+                  alt="GIF"
+                  className="max-w-xs max-h-48 rounded"
+                />
+              ) : (
+                <span>{message.content}</span>
+              )}
             </div>
           </div>
         ))}
@@ -284,6 +313,15 @@ export default function FanRoomPanel({
 
       <div className="p-4 border-t">
         <form onSubmit={handleSubmit} className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowGifPicker(true)}
+            className="px-3 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400"
+            disabled={status !== "connected"}
+            title="Send GIF"
+          >
+            GIF
+          </button>
           <input
             value={text}
             onChange={(event) => setText(event.target.value)}
@@ -300,6 +338,12 @@ export default function FanRoomPanel({
           </button>
         </form>
       </div>
+
+      <GifPicker
+        isOpen={showGifPicker}
+        onClose={() => setShowGifPicker(false)}
+        onSelectGif={handleGifSelect}
+      />
     </div>
   );
 }
