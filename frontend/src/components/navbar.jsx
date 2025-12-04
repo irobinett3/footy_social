@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import AuthModal from "./AuthModal";
 import UserProfile from "./UserProfile";
 import { getTeamLogoUrlByName } from "../utils/teamLogos";
 
 export default function Navbar({ onToggleSidebar }) {
+  const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -45,49 +47,54 @@ export default function Navbar({ onToggleSidebar }) {
 
   return (
     <>
-     <header className="w-full bg-gray-900 text-slate-100 shadow-md px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+     <header className="w-full bg-gray-900 text-slate-100 shadow-md px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <button className="md:hidden p-2 rounded hover:bg-gray-100" onClick={onToggleSidebar}>
             ☰
           </button>
-          <div className="text-xl font-bold">FootySocial</div>
-          <div className="hidden sm:block text-sm text-gray-500 ml-4">
+          <button
+            onClick={() => navigate("/")}
+            className="text-2xl font-bold hover:text-sky-400 transition-colors cursor-pointer"
+          >
+            FootySocial
+          </button>
+          <div className="hidden sm:block text-base text-gray-400 ml-4">
             Scores • Chat • Trivia • Fan Rooms
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <input className="hidden md:block border rounded px-2 py-1" placeholder="Search teams, fixtures..." />
+        <div className="flex items-center gap-4">
+          <input className="hidden md:block border rounded px-3 py-2 text-sm" placeholder="Search teams, fixtures..." />
           
           {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <span className="hidden sm:block text-sm text-gray-600">
+            <div className="flex items-center gap-4">
+              <span className="hidden sm:block text-base text-gray-300">
                 Welcome, {user?.first_name || user?.username}!
               </span>
               <button
                 onClick={handleProfileClick}
-                className="flex items-center gap-2 px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                className="flex items-center gap-2 px-4 py-2 rounded bg-sky-600 text-white hover:bg-sky-700 text-sm font-medium"
               >
-                <div className="w-6 h-6 bg-white bg-opacity-20 rounded-full flex items-center justify-center overflow-hidden">
+                <div className="w-7 h-7 bg-white bg-opacity-20 rounded-full flex items-center justify-center overflow-hidden">
                   {favoriteLogo ? (
-                    <img src={favoriteLogo} alt="Avatar" className="w-6 h-6 rounded-full object-cover" />
+                    <img src={favoriteLogo} alt="Avatar" className="w-7 h-7 rounded-full object-cover" />
                   ) : (
-                    <span className="text-xs">{user?.first_name?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase()}</span>
+                    <span className="text-sm">{user?.first_name?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase()}</span>
                   )}
                 </div>
                 Profile
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={handleSignIn}
-                className="px-3 py-1 rounded bg-sky-600 text-white hover:bg-sky-700"
+                className="px-4 py-2 rounded bg-sky-600 text-white hover:bg-sky-700 text-sm font-medium"
               >
                 Sign in
               </button>
               <button
                 onClick={handleSignUp}
-                className="px-3 py-1 rounded border border-sky-600 text-sky-600 hover:bg-sky-50"
+                className="px-4 py-2 rounded border border-sky-600 text-sky-600 hover:bg-sky-50 text-sm font-medium"
               >
                 Sign up
               </button>

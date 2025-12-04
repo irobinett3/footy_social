@@ -4,8 +4,10 @@ import { AuthProvider } from "./contexts/AuthContext";
 import Navbar from "./components/navbar.jsx";
 import Sidebar from "./components/sidebar.jsx";
 import FixturesPanel from "./components/fixtures.jsx";
+import StandingsPanel from "./components/standings.jsx";
 import TriviaPanel from "./components/trivia.jsx";
 import FanRoomPanel from "./components/fanroom.jsx";
+import TeamInfoSidebar from "./components/TeamInfoSidebar.jsx";
 import { api } from "./api/api.js";
 
 function useInitialAppData() {
@@ -85,10 +87,14 @@ function MainDashboard() {
 
         <main className="flex-1 p-6 space-y-4 flex flex-col min-h-0 overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 h-full overflow-hidden">
-            <div className="lg:col-span-2 flex flex-col min-h-0 h-full">
-              <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
-                <FixturesPanel fixtures={fixtures} />
-                <TriviaPanel trivia={trivia} />
+            <div className="lg:col-span-2 flex flex-col min-h-0 h-full overflow-hidden">
+              <div className="flex flex-col h-full overflow-hidden pr-1">
+                <div className="flex-shrink-0 mb-4">
+                  <TriviaPanel trivia={trivia} />
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <StandingsPanel />
+                </div>
               </div>
             </div>
 
@@ -167,19 +173,12 @@ function TeamFanRoomPage() {
       <Navbar onToggleSidebar={() => setSidebarOpen((s) => !s)} />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <Sidebar
-          fixtures={fixtures}
-          fanRooms={fanRooms}
-          onSelectRoom={handleJoinFanRoom}
-        />
-
+        {/* Team Info Sidebar */}
+        {roomForChat && !roomForChat.is_global && (
+          <TeamInfoSidebar teamName={roomForChat.team_name} />
+        )}
+        
         <main className="flex-1 p-6 space-y-4 flex flex-col min-h-0 overflow-hidden">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-sm text-sky-700 underline hover:text-sky-500"
-          >
-            ← Back to dashboard
-          </button>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 min-h-0 h-full overflow-hidden">
             <div className="lg:col-span-2 flex flex-col min-h-0 h-full">
               <div className="flex-1 min-h-0 h-full overflow-hidden">
@@ -192,7 +191,7 @@ function TeamFanRoomPage() {
             <aside className="flex flex-col min-h-0 h-full overflow-hidden">
               <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
                 <FixturesPanel fixtures={fixtures} />
-                <TriviaPanel trivia={trivia} />
+                <StandingsPanel />
               </div>
             </aside>
           </div>

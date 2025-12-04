@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, get_db, SessionLocal
 from models import Base
-from routers import auth, users, trivia
+from routers import auth, users, trivia, standings, gifs
 from routers import fanrooms as fanroom_router
 from routers.fanrooms import ensure_fan_rooms_exist
 from config import settings
@@ -30,6 +30,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(trivia.router)
+app.include_router(standings.router)
+app.include_router(gifs.router)
 app.include_router(fanroom_router.router)
 
 
