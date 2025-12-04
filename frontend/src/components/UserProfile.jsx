@@ -17,6 +17,48 @@ export default function UserProfile({ isOpen, onClose }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [favoriteLogo, setFavoriteLogo] = useState('');
+  const [teams, setTeams] = useState([]);
+
+  // Fetch teams list for dropdown
+  useEffect(() => {
+    fetch("http://localhost:8000/api/standings")
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        const teamNames = data.standings
+          ?.map((team) => team.team_name)
+          .sort() || [];
+        setTeams(teamNames);
+      })
+      .catch((err) => {
+        console.error("Error fetching teams:", err);
+        // Fallback to a static list if API fails
+        setTeams([
+          "Arsenal",
+          "Aston Villa",
+          "Bournemouth",
+          "Brighton & Hove Albion",
+          "Brentford",
+          "Chelsea",
+          "Crystal Palace",
+          "Everton",
+          "Fulham",
+          "Ipswich Town",
+          "Leicester City",
+          "Liverpool",
+          "Manchester City",
+          "Manchester United",
+          "Newcastle United",
+          "Nottingham Forest",
+          "Southampton",
+          "Tottenham Hotspur",
+          "West Ham United",
+          "Wolverhampton Wanderers"
+        ]);
+      });
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -229,14 +271,19 @@ export default function UserProfile({ isOpen, onClose }) {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Favorite Team (Optional)
               </label>
-              <input
-                type="text"
+              <select
                 name="favorite_team"
                 value={formData.favorite_team}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., Arsenal"
-              />
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Select a team...</option>
+                {teams.map((team) => (
+                  <option key={team} value={team}>
+                    {team}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="flex space-x-2">
