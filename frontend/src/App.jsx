@@ -9,6 +9,7 @@ import TriviaPanel from "./components/trivia.jsx";
 import FanRoomPanel from "./components/fanroom.jsx";
 import TeamInfoSidebar from "./components/TeamInfoSidebar.jsx";
 import { api } from "./api/api.js";
+import { getFanRoomBackground } from "./utils/teamColors.js";
 
 function useInitialAppData() {
   const [fixtures, setFixtures] = useState([]);
@@ -160,6 +161,9 @@ function TeamFanRoomPage() {
   }, [numericRoomId, selectedRoom]);
 
   const roomForChat = selectedRoom || fetchedRoom;
+  const roomBackgroundStyle = roomForChat
+    ? { background: getFanRoomBackground(roomForChat.team_name) }
+    : undefined;
 
   const handleJoinFanRoom = useCallback(
     (targetRoomId) => {
@@ -169,7 +173,10 @@ function TeamFanRoomPage() {
   );
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-100 to-blue-900 text-slate-800 flex flex-col overflow-hidden">
+    <div
+      className="h-screen bg-gradient-to-br from-slate-100 to-blue-900 text-slate-800 flex flex-col overflow-hidden"
+      style={roomBackgroundStyle}
+    >
       <Navbar onToggleSidebar={() => setSidebarOpen((s) => !s)} />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">

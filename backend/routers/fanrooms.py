@@ -34,24 +34,39 @@ FAN_ROOM_TEAM_NAMES: List[str] = [
     "Crystal Palace",
     "Everton",
     "Fulham",
+    "Leeds United",
     "Liverpool",
-    "Luton Town",
     "Manchester City",
     "Manchester United",
     "Newcastle United",
     "Nottingham Forest",
-    "Sheffield United",
+    "Sunderland",
     "Tottenham Hotspur",
     "West Ham United",
     "Wolverhampton Wanderers",
 ]
 
+# Alias a few shortened team names to the canonical room names so favorites still match.
+TEAM_NAME_ALIASES = {
+    "tottenham": "Tottenham Hotspur",
+    "west ham": "West Ham United",
+    "wolverhampton": "Wolverhampton Wanderers",
+}
+
 router = APIRouter(prefix="/fanrooms", tags=["fanrooms"])
+
+
+def normalize_team_name(name: str) -> str:
+    if not name:
+        return ""
+    key = name.strip().lower()
+    return TEAM_NAME_ALIASES.get(key, name.strip())
 
 
 def ensure_fan_rooms_exist(db: Session) -> None:
     """Create the default fan rooms if they are missing."""
     existing = {room.team_name for room in db.query(FanRoom).all()}
+    existing_lower = {name.strip().lower() for name in existing}
     created = False
 
     if GLOBAL_FAN_ROOM_NAME not in existing:
@@ -59,8 +74,9 @@ def ensure_fan_rooms_exist(db: Session) -> None:
         created = True
 
     for team_name in FAN_ROOM_TEAM_NAMES:
-        if team_name not in existing:
-            db.add(FanRoom(team_name=team_name))
+        canonical = normalize_team_name(team_name)
+        if canonical.strip().lower() not in existing_lower:
+            db.add(FanRoom(team_name=canonical))
             created = True
 
     if created:
@@ -120,6 +136,7 @@ manager = FanRoomConnectionManager()
 @router.get("/", response_model=List[FanRoomResponse])
 def list_fan_rooms(db: Session = Depends(get_db)) -> List[FanRoomResponse]:
     rooms = db.query(FanRoom).all()
+    allowed_names = {normalize_team_name(name).lower() for name in FAN_ROOM_TEAM_NAMES}
     ordered_rooms = sorted(
         rooms,
         key=lambda room: (0 if is_global_room(room) else 1, room.team_name.lower()),
@@ -128,6 +145,12 @@ def list_fan_rooms(db: Session = Depends(get_db)) -> List[FanRoomResponse]:
     responses: List[FanRoomResponse] = []
     for room in ordered_rooms:
         global_room = is_global_room(room)
+        normalized_name = normalize_team_name(room.team_name).lower()
+
+        # Hide any fan room not in the current league list unless it is the global room.
+        if not global_room and normalized_name not in allowed_names:
+            continue
+
         display_name = room.team_name if global_room else f"{room.team_name} Fans"
         responses.append(
             FanRoomResponse(
