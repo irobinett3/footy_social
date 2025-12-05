@@ -14,6 +14,7 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from auth import get_user_by_username, verify_token
+from routers.chatbot import check_message_content, process_chat_message
 from database import SessionLocal, get_db
 from models import FanRoom, FanRoomMessage, User
 from schemas import FanRoomMessageResponse, FanRoomResponse
@@ -296,6 +297,20 @@ async def fan_room_websocket(websocket: WebSocket, room_id: int) -> None:
                 )
                 continue
 
+            # Check for bad words using the chatbot filter
+            is_clean, error_msg = check_message_content(content)
+            if not is_clean:
+                logger.warning(
+                    "Message blocked for user %s in room %s: inappropriate content",
+                    user.username,
+                    room_id
+                )
+                await websocket.send_json(
+                    {"type": "error", "message": error_msg}
+                )
+                continue
+
+            # Save and broadcast user message
             now = datetime.utcnow()
             message = FanRoomMessage(
                 room_id=room_id,
@@ -321,6 +336,51 @@ async def fan_room_websocket(websocket: WebSocket, room_id: int) -> None:
                     "chat_date": message.chat_date.isoformat(),
                 },
             )
+
+            # Check if FootyBot should respond
+            bot_response = await process_chat_message(
+                room_id=room_id,
+                username=user.username,
+                content=content,
+                timestamp=now,
+                team_name=room.team_name
+            )
+
+            if bot_response:
+                logger.info(
+                    "FootyBot responding in room %s to user %s",
+                    room_id,
+                    user.username
+                )
+                
+                # Save bot message to database
+                bot_message = FanRoomMessage(
+                    room_id=room_id,
+                    user_id=user.user_id,  # You might want to create a special bot user instead
+                    content=bot_response,
+                    created_at=datetime.utcnow(),
+                    chat_date=now.date(),
+                )
+                db.add(bot_message)
+                db.commit()
+                db.refresh(bot_message)
+
+                # Broadcast bot response
+                await manager.broadcast(
+                    room_id,
+                    {
+                        "type": "chat_message",
+                        "message_id": bot_message.id,
+                        "room_id": room_id,
+                        "user_id": "bot",
+                        "username": "FootyBot",
+                        "content": bot_response,
+                        "created_at": bot_message.created_at.isoformat(),
+                        "chat_date": bot_message.chat_date.isoformat(),
+                        "is_bot": True,  # Flag so frontend can style differently
+                    },
+                )
+
     except WebSocketDisconnect:
         manager.disconnect(room_id, websocket)
         await manager.broadcast_presence(room_id)
