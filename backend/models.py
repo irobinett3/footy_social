@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 import uuid
+from datetime import datetime
 
 class User(Base):
     __tablename__ = "users"
@@ -58,3 +59,23 @@ class FanRoomMessage(Base):
 
     room = relationship("FanRoom", back_populates="messages")
     user = relationship("User")
+
+
+class EPLMatch(Base):
+    __tablename__ = "epl_matches"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    match_number = Column(Integer, nullable=False)
+    round_number = Column(Integer, nullable=False)
+    match_date = Column(DateTime, nullable=False, index=True)
+    location = Column(String(255), nullable=True)
+    home_team = Column(String(100), nullable=False)
+    away_team = Column(String(100), nullable=False)
+    result = Column(String(50), nullable=True)
+    created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = Column(DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+
+    @property
+    def match_date_utc(self) -> datetime:
+        """Return the match kickoff datetime (naive UTC)."""
+        return self.match_date
