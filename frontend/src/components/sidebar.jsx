@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
   const { user } = useAuth();
   const [showAllRooms, setShowAllRooms] = useState(false);
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  const now = Date.now();
   
   const favoriteTeam = useMemo(
     () => (user?.favorite_team || "").trim().toLowerCase(),
@@ -92,14 +94,36 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
           ) : (
             <>
               <div className="space-y-2">
-                {(showAllUpcoming ? fixtures.upcoming : fixtures.upcoming.slice(0, 5)).map((f) => (
-                  <div key={`up-${f.id}`} className="p-2 rounded hover:bg-white cursor-pointer">
-                    <div className="text-sm font-medium">{f.home} vs {f.away}</div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(f.date).toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', year: 'numeric', month: 'short', day: 'numeric' })}
-                    </div>
-                  </div>
-                ))}
+                {(showAllUpcoming ? fixtures.upcoming : fixtures.upcoming.slice(0, 5)).map((f) => {
+                  const kickoff = new Date(f.date).getTime();
+                  const within24h = kickoff >= now && kickoff - now <= 24 * 60 * 60 * 1000;
+                  const Container = within24h ? Link : "div";
+                  const containerProps = within24h
+                    ? { to: `/live-game/${f.id}` }
+                    : {};
+
+                  return (
+                    <Container
+                      key={`up-${f.id}`}
+                      {...containerProps}
+                      className={`p-2 rounded flex justify-between items-center ${
+                        within24h ? "hover:bg-sky-50 cursor-pointer" : "hover:bg-white cursor-default"
+                      }`}
+                    >
+                      <div>
+                        <div className="text-sm font-medium">{f.home} vs {f.away}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(f.date).toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', year: 'numeric', month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+                      {within24h && (
+                        <div className="ml-2 text-xs font-semibold text-sky-700 hover:text-sky-900 flex-shrink-0">
+                          Join
+                        </div>
+                      )}
+                    </Container>
+                  );
+                })}
               </div>
               {fixtures.upcoming.length > 5 && (
                 <button

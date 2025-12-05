@@ -8,6 +8,7 @@ import StandingsPanel from "./components/standings.jsx";
 import TriviaPanel from "./components/trivia.jsx";
 import FanRoomPanel from "./components/fanroom.jsx";
 import TeamInfoSidebar from "./components/TeamInfoSidebar.jsx";
+import LiveGameRoom from "./pages/LiveGameRoom.jsx";
 import { api } from "./api/api.js";
 import { getFanRoomBackground } from "./utils/teamColors.js";
 
@@ -234,6 +235,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<MainDashboard />} />
       <Route path="/fanroom/:roomId" element={<TeamFanRoomPage />} />
+      <Route path="/live-game/:matchId" element={<LiveGameRoom />} />
     </Routes>
   );
 }
