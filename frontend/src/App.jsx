@@ -8,11 +8,12 @@ import StandingsPanel from "./components/standings.jsx";
 import TriviaPanel from "./components/trivia.jsx";
 import FanRoomPanel from "./components/fanroom.jsx";
 import TeamInfoSidebar from "./components/TeamInfoSidebar.jsx";
+import LiveGameRoom from "./pages/LiveGameRoom.jsx";
 import { api } from "./api/api.js";
 import { getFanRoomBackground } from "./utils/teamColors.js";
 
 function useInitialAppData() {
-  const [fixtures, setFixtures] = useState([]);
+  const [fixtures, setFixtures] = useState({ live: [], upcoming: [] });
   const [fanRooms, setFanRooms] = useState([]);
   const [trivia, setTrivia] = useState(null);
 
@@ -22,14 +23,14 @@ function useInitialAppData() {
     (async () => {
       try {
         const [fixturesData, fanRoomsData, triviaData] = await Promise.all([
-          api.fetchUpcomingFixtures(),
+          api.fetchFixtures(),
           api.fetchFanRooms(),
           api.fetchTriviaForDay(),
         ]);
 
         if (!isMounted) return;
 
-        setFixtures(fixturesData);
+        setFixtures(fixturesData || { live: [], upcoming: [] });
         setFanRooms(fanRoomsData);
         setTrivia(triviaData);
       } catch (error) {
@@ -165,6 +166,27 @@ function TeamFanRoomPage() {
     ? { background: getFanRoomBackground(roomForChat.team_name) }
     : undefined;
 
+  const teamFixtures = useMemo(() => {
+    if (!roomForChat?.team_name || !fixtures?.upcoming) {
+      return { live: [], upcoming: [] };
+    }
+    const normalize = (name) =>
+      (name || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/gi, "");
+
+    const target = normalize(roomForChat.team_name);
+    const upcoming = fixtures.upcoming
+      .filter((f) => {
+        const home = normalize(f.home);
+        const away = normalize(f.away);
+        return home === target || away === target;
+      })
+      .slice(0, 3);
+
+    return { live: [], upcoming };
+  }, [fixtures, roomForChat?.team_name]);
+
   const handleJoinFanRoom = useCallback(
     (targetRoomId) => {
       navigate(`/fanroom/${targetRoomId}`);
@@ -197,7 +219,7 @@ function TeamFanRoomPage() {
             </div>
             <aside className="flex flex-col min-h-0 h-full overflow-hidden">
               <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
-                <FixturesPanel fixtures={fixtures} />
+                <FixturesPanel fixtures={teamFixtures} />
                 <StandingsPanel />
               </div>
             </aside>
@@ -213,6 +235,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<MainDashboard />} />
       <Route path="/fanroom/:roomId" element={<TeamFanRoomPage />} />
+      <Route path="/live-game/:matchId" element={<LiveGameRoom />} />
     </Routes>
   );
 }

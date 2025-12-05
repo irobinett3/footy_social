@@ -67,37 +67,28 @@ export const api = {
     },
   },
 
-  // Live data from ESPN: English Premier League scoreboard
-  fetchUpcomingFixtures: async () => {
-    const url = 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard';
-    const res = await fetch(url);
-    if (!res.ok) {
-      // Fallback to empty list on error
-      return [];
+  fetchFixtures: async () => {
+    // Pull fixtures directly from the database-backed API (CSV-fed epl_matches table)
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/fixtures`);
+      if (!res.ok) {
+        return { live: [], upcoming: [] };
+      }
+      const data = await res.json();
+      const normalizeList = (list, state) =>
+        (Array.isArray(list) ? list : []).map((item) => ({
+          ...item,
+          state: item.state || state,
+          competition: item.competition || "Premier League",
+        }));
+      return {
+        live: normalizeList(data.live, "live"),
+        upcoming: normalizeList(data.upcoming, "upcoming"),
+      };
+    } catch (err) {
+      console.error("Failed to fetch fixtures from API:", err);
+      return { live: [], upcoming: [] };
     }
-    const data = await res.json();
-    // Map events to the UI format and keep only scheduled/upcoming
-    const events = Array.isArray(data.events) ? data.events : [];
-    const fixtures = events
-      .map((ev) => {
-        const comp = (ev.competitions && ev.competitions[0]) || {};
-        const teams = (comp.competitors || []).sort((a, b) => (a.homeAway === 'home' ? -1 : 1));
-        const home = teams.find((t) => t.homeAway === 'home');
-        const away = teams.find((t) => t.homeAway === 'away');
-        const status = (comp.status && comp.status.type && comp.status.type.state) || 'pre';
-        return {
-          id: ev.id,
-          home: home && home.team ? home.team.displayName : 'Home',
-          away: away && away.team ? away.team.displayName : 'Away',
-          date: ev.date,
-          competition: (data.leagues && data.leagues[0] && data.leagues[0].name) || 'Premier League',
-          state: status,
-        };
-      })
-      .filter((f) => f.state === 'pre')
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    return fixtures;
   },
 
   fetchFanRooms: async () => {

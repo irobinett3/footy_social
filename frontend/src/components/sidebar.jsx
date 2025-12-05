@@ -1,9 +1,12 @@
 import React, { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
   const { user } = useAuth();
   const [showAllRooms, setShowAllRooms] = useState(false);
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  const now = Date.now();
   
   const favoriteTeam = useMemo(
     () => (user?.favorite_team || "").trim().toLowerCase(),
@@ -63,22 +66,76 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
 
   return (
     <aside className="hidden md:flex md:flex-col md:flex-shrink-0 w-72 bg-gray-50 border-r p-4 h-full overflow-y-auto min-h-0">
-      <section className="mb-6">
-        <h3 className="font-semibold mb-3">Upcoming Fixtures</h3>
-        {!fixtures || fixtures.length === 0 ? (
-          <div className="text-gray-500 text-xs">No upcoming fixtures.</div>
-        ) : (
-          <div className="space-y-2">
-            {fixtures.map((f) => (
-              <div key={f.id} className="p-2 rounded hover:bg-white cursor-pointer">
-                <div className="text-sm font-medium">{f.home} vs {f.away}</div>
-                <div className="text-xs text-gray-500">
-                  {new Date(f.date).toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', year: 'numeric', month: 'short', day: 'numeric', second: undefined })}
+      <section className="mb-6 space-y-4">
+        {fixtures?.live && fixtures.live.length > 0 && (
+          <div>
+            <h3 className="font-semibold mb-3">Live Games</h3>
+            <div className="space-y-2">
+              {fixtures.live.map((f) => (
+                <div key={`live-${f.id}`} className="p-2 rounded bg-red-50 border border-red-100">
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm font-semibold text-red-700">LIVE</div>
+                    <div className="text-xs text-red-600">{f.location || "Venue TBA"}</div>
+                  </div>
+                  <div className="text-sm font-medium">{f.home} vs {f.away}</div>
+                  <div className="text-xs text-gray-600">
+                    {new Date(f.date).toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', month: 'short', day: 'numeric' })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
+
+        <div>
+          <h3 className="font-semibold mb-3">Upcoming Fixtures</h3>
+          {!fixtures?.upcoming || fixtures.upcoming.length === 0 ? (
+            <div className="text-gray-500 text-xs">No upcoming fixtures.</div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                {(showAllUpcoming ? fixtures.upcoming : fixtures.upcoming.slice(0, 5)).map((f) => {
+                  const kickoff = new Date(f.date).getTime();
+                  const within24h = kickoff >= now && kickoff - now <= 24 * 60 * 60 * 1000;
+                  const Container = within24h ? Link : "div";
+                  const containerProps = within24h
+                    ? { to: `/live-game/${f.id}` }
+                    : {};
+
+                  return (
+                    <Container
+                      key={`up-${f.id}`}
+                      {...containerProps}
+                      className={`p-2 rounded flex justify-between items-center ${
+                        within24h ? "hover:bg-sky-50 cursor-pointer" : "hover:bg-white cursor-default"
+                      }`}
+                    >
+                      <div>
+                        <div className="text-sm font-medium">{f.home} vs {f.away}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(f.date).toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', year: 'numeric', month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+                      {within24h && (
+                        <div className="ml-2 text-xs font-semibold text-sky-700 hover:text-sky-900 flex-shrink-0">
+                          Join
+                        </div>
+                      )}
+                    </Container>
+                  );
+                })}
+              </div>
+              {fixtures.upcoming.length > 5 && (
+                <button
+                  className="mt-2 w-full text-center text-xs text-sky-700 hover:text-sky-900"
+                  onClick={() => setShowAllUpcoming((s) => !s)}
+                >
+                  {showAllUpcoming ? "Show less" : `Show more (${fixtures.upcoming.length - 5} more)`}
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </section>
 
       <section>
@@ -134,9 +191,11 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
         {favoriteRoom && otherRooms.length > 0 && (
           <button
             onClick={() => setShowAllRooms(!showAllRooms)}
-            className="mt-3 w-full text-sm text-sky-600 hover:text-sky-700 underline"
+            className="mt-3 w-full text-xs text-sky-700 hover:text-sky-900"
           >
-            {showAllRooms ? "Show Less" : `Show More (${otherRooms.length} other${otherRooms.length !== 1 ? 's' : ''})`}
+            {showAllRooms
+              ? "Show less"
+              : `Show more (${otherRooms.length} other${otherRooms.length !== 1 ? "s" : ""})`}
           </button>
         )}
       </section>
