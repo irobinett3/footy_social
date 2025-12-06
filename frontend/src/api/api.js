@@ -104,6 +104,19 @@ export const api = {
     return makeRequest(`/fanrooms/${roomId}/messages${query}`);
   },
 
+  fetchLiveGames: async () => {
+    return makeRequest('/livegames');
+  },
+
+  fetchLiveGame: async (gameId) => {
+    return makeRequest(`/livegames/${gameId}`);
+  },
+
+  fetchLiveGameMessages: async (gameId, limit = 100) => {
+    const query = `?limit=${encodeURIComponent(limit)}`;
+    return makeRequest(`/livegames/${gameId}/messages${query}`);
+  },
+
   fetchTriviaForDay: async () => ({
     id: "triv-20250924",
     title: "Guess the Top Scorer",
