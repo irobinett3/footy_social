@@ -6,6 +6,7 @@ from models import Base
 from routers import auth, users, trivia, standings, gifs
 from routers import fanrooms as fanroom_router
 from routers import fixtures as fixtures_router
+from routers import livegame as livegame_router
 from routers.fanrooms import ensure_fan_rooms_exist
 from config import settings
 from routers.chatbot import initialize_chatbot
@@ -37,6 +38,7 @@ app.include_router(standings.router)
 app.include_router(gifs.router)
 app.include_router(fanroom_router.router)
 app.include_router(fixtures_router.router)
+app.include_router(livegame_router.router)
 
 
 @app.on_event("startup")

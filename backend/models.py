@@ -79,3 +79,27 @@ class EPLMatch(Base):
     def match_date_utc(self) -> datetime:
         """Return the match kickoff datetime (naive UTC)."""
         return self.match_date
+
+
+class LiveGame(Base):
+    __tablename__ = "live_games"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    home_team = Column(String(100), nullable=False)
+    away_team = Column(String(100), nullable=False)
+    match_date = Column(DateTime, nullable=False, index=True)
+
+    messages = relationship("LiveGameMessage", back_populates="game", cascade="all, delete-orphan")
+
+
+class LiveGameMessage(Base):
+    __tablename__ = "live_game_messages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    game_id = Column(Integer, ForeignKey("live_games.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(BINARY(16), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+    game = relationship("LiveGame", back_populates="messages")
+    user = relationship("User")

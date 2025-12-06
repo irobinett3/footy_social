@@ -62,6 +62,22 @@ class FanRoomMessageResponse(BaseModel):
     created_at: datetime
     chat_date: date
 
+# Live game schemas
+class LiveGameResponse(BaseModel):
+    id: int
+    home_team: str
+    away_team: str
+    match_date: datetime
+
+
+class LiveGameMessageResponse(BaseModel):
+    message_id: int
+    game_id: int
+    user_id: str
+    username: str
+    content: str
+    created_at: datetime
+
 # Authentication schemas
 class Token(BaseModel):
     access_token: str
