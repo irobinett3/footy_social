@@ -9,6 +9,7 @@ from routers import fixtures as fixtures_router
 from routers.fanrooms import ensure_fan_rooms_exist
 from config import settings
 from routers.chatbot import initialize_chatbot
+from routers import livegame
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -37,6 +38,7 @@ app.include_router(standings.router)
 app.include_router(gifs.router)
 app.include_router(fanroom_router.router)
 app.include_router(fixtures_router.router)
+app.include_router(livegame.router)
 
 
 @app.on_event("startup")

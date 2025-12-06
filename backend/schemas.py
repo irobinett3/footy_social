@@ -73,3 +73,25 @@ class TokenData(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+    
+class LiveGameResponse(BaseModel):
+    id: int
+    home_team: str
+    away_team: str
+    match_date: datetime
+    active_users: int
+
+    class Config:
+        from_attributes = True
+
+
+class LiveGameMessageResponse(BaseModel):
+    message_id: int
+    game_id: int
+    user_id: str
+    username: str
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

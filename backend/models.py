@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, Integer, DateTime, BINARY, Date, ForeignKey
+from sqlalchemy import Column, String, Text, Integer, DateTime, BINARY, Date, ForeignKey, LargeBinary
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -79,3 +79,27 @@ class EPLMatch(Base):
     def match_date_utc(self) -> datetime:
         """Return the match kickoff datetime (naive UTC)."""
         return self.match_date
+    
+    
+class LiveGame(Base):
+    __tablename__ = "live_games"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    home_team = Column(String(100), nullable=False)
+    away_team = Column(String(100), nullable=False)
+    match_date = Column(DateTime, nullable=False)
+    
+    messages = relationship("LiveGameMessage", back_populates="game")
+
+
+class LiveGameMessage(Base):
+    __tablename__ = "live_game_messages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    game_id = Column(Integer, ForeignKey("live_games.id"), nullable=False)
+    user_id = Column(LargeBinary(16), ForeignKey("users.user_id"), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False)
+    
+    game = relationship("LiveGame", back_populates="messages")
+    user = relationship("User")
