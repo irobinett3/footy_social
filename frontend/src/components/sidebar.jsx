@@ -99,7 +99,8 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
                   const within24h = kickoff >= now && kickoff - now <= 24 * 60 * 60 * 1000;
                   const Container = within24h ? Link : "div";
                   const containerProps = within24h
-                    ? { to: `/live-game/${f.id}` }
+                    ? { to: `/live-game/${f.id}`,
+                    state: {match:f}}
                     : {};
 
                   return (

@@ -109,4 +109,13 @@ export const api = {
     title: "Guess the Top Scorer",
     questions: [{ q: "Who scored the most goals in 2024/25 PL?", options: ["A","B","C","D"] }]
   }),
+
+  fetchLiveGameMessages: async (gameId) => {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`http://localhost:8000/livegame/history/${gameId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error("Failed to fetch live game messages");
+    return response.json();
+  },
 };
