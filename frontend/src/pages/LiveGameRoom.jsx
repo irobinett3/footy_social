@@ -39,28 +39,26 @@ export default function LiveGameRoom() {
   const socketRef = useRef(null);
   const listRef = useRef(null);
 
-const kickoff = useMemo(() => {
-  if (!game?.match_date) return "";
-  return new Date(game.match_date).toLocaleString(undefined, {
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}, [game?.match_date]);
+  const kickoff = useMemo(() => {
+    if (!game?.match_date) return "";
+    return new Date(game.match_date).toLocaleString(undefined, {
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }, [game?.match_date]);
 
-const stadiumName = useMemo(() => {
-  if (!game) return "";
-  return game.stadium || `${game.home_team || "Home"} Stadium`;
-}, [game]);
+  const stadiumName = useMemo(() => {
+    if (!game) return "";
+    return game.stadium || `${game.home_team || "Home"} Stadium`;
+  }, [game]);
 
+  // Load game data
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     setGame(null);
-    setPolls([]);
-    setPollSelections({});
-    setActivePollIndex(0);
 
     if (!Number.isFinite(gameId)) {
       setError("Invalid match id.");
@@ -91,6 +89,7 @@ const stadiumName = useMemo(() => {
     };
   }, [gameId]);
 
+  // Load chat history
   useEffect(() => {
     let cancelled = false;
     setMessages([]);
@@ -116,23 +115,45 @@ const stadiumName = useMemo(() => {
     };
   }, [gameId]);
 
+  // Load polls from backend
   useEffect(() => {
-    if (!game) return;
-    const defaultPoll = {
-      id: "winner",
-      title: `${game.home_team} vs ${game.away_team} – Who wins?`,
-      options: [
-        { key: "home", label: game.home_team || "Home" },
-        { key: "away", label: game.away_team || "Away" },
-      ],
-      votes: { home: 0, away: 0 },
-      createdBy: "FootySocial",
-    };
-    setPolls([defaultPoll]);
-    setActivePollIndex(0);
-    setPollSelections({});
-  }, [game?.home_team, game?.away_team]);
+    let cancelled = false;
 
+    if (!Number.isFinite(gameId)) return;
+
+    (async () => {
+      try {
+        const pollsData = await api.fetchGamePolls(gameId);
+        if (!cancelled) {
+          setPolls(pollsData);
+          
+          // Load user's votes if authenticated
+          if (token && pollsData.length > 0) {
+            const userVotes = {};
+            for (const poll of pollsData) {
+              try {
+                const voteData = await api.getUserVote(gameId, poll.id, token);
+                if (voteData.option_key) {
+                  userVotes[poll.id] = voteData.option_key;
+                }
+              } catch (err) {
+                console.error(`Failed to load vote for poll ${poll.id}:`, err);
+              }
+            }
+            setPollSelections(userVotes);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load polls:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [gameId, token]);
+
+  // WebSocket connection
   useEffect(() => {
     if (!game || !token) {
       setStatus(game ? "unauthorized" : "idle");
@@ -154,7 +175,14 @@ const stadiumName = useMemo(() => {
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === "welcome" || data.type === "presence") {
+        
+        if (data.type === "welcome") {
+          setActiveUsers(presenceFallback(data.active_users));
+          // Update polls from welcome message if present
+          if (data.polls && Array.isArray(data.polls)) {
+            setPolls(data.polls);
+          }
+        } else if (data.type === "presence") {
           setActiveUsers(presenceFallback(data.active_users));
         } else if (data.type === "chat_message") {
           setMessages((prev) => {
@@ -173,6 +201,16 @@ const stadiumName = useMemo(() => {
               },
             ];
           });
+        } else if (data.type === "poll_created") {
+          // A new poll was created by someone
+          setPolls((prev) => [...prev, data.poll]);
+        } else if (data.type === "poll_updated") {
+          // Poll votes were updated
+          setPolls((prev) =>
+            prev.map((poll) =>
+              poll.id === data.poll.id ? data.poll : poll
+            )
+          );
         } else if (data.type === "error") {
           setError(data.message || "An error occurred.");
         }
@@ -200,6 +238,7 @@ const stadiumName = useMemo(() => {
     };
   }, [game, gameId, token]);
 
+  // Auto-scroll chat
   useEffect(() => {
     if (!listRef.current) return;
     listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -207,36 +246,50 @@ const stadiumName = useMemo(() => {
 
   const currentPoll = polls[activePollIndex];
 
-  const totalVotes =
-    currentPoll?.options.reduce(
-      (sum, opt) => sum + (currentPoll.votes[opt.key] || 0),
-      0
-    ) || 0;
+  const totalVotes = currentPoll?.options.reduce(
+    (sum, opt) => sum + (currentPoll.votes[opt.key] || 0),
+    0
+  ) || 0;
 
-  const handleVote = (pollId, optionKey) => {
-    setPolls((prev) =>
-      prev.map((poll) => {
-        if (poll.id !== pollId) return poll;
-        const prevSelection = pollSelections[pollId];
-        const nextVotes = { ...poll.votes };
-        if (prevSelection && prevSelection !== optionKey) {
-          nextVotes[prevSelection] = Math.max(
-            0,
-            (nextVotes[prevSelection] || 0) - 1
-          );
-        }
+  const handleVote = async (pollId, optionKey) => {
+    if (!token) {
+      setError("Please sign in to vote.");
+      return;
+    }
+
+    try {
+      // Call the backend API to record the vote
+      const updatedPoll = await api.voteOnPoll(gameId, pollId, optionKey, token);
+      
+      // Update local state
+      setPolls((prev) =>
+        prev.map((poll) => (poll.id === pollId ? updatedPoll : poll))
+      );
+
+      // Update user's selection
+      setPollSelections((prev) => {
+        const prevSelection = prev[pollId];
         if (prevSelection === optionKey) {
-          nextVotes[optionKey] = Math.max(0, (nextVotes[optionKey] || 0) - 1);
-          return { ...poll, votes: nextVotes };
+          // Toggled off
+          const { [pollId]: _, ...rest } = prev;
+          return rest;
         }
-        nextVotes[optionKey] = (nextVotes[optionKey] || 0) + 1;
-        return { ...poll, votes: nextVotes };
-      })
-    );
-    setPollSelections((prev) => ({
-      ...prev,
-      [pollId]: prev[pollId] === optionKey ? null : optionKey,
-    }));
+        return { ...prev, [pollId]: optionKey };
+      });
+
+      // Notify other users via WebSocket
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(
+          JSON.stringify({
+            type: "poll_voted",
+            poll_id: pollId,
+          })
+        );
+      }
+    } catch (err) {
+      console.error("Failed to vote:", err);
+      setError("Failed to record your vote.");
+    }
   };
 
   const cyclePoll = (direction) => {
@@ -258,30 +311,53 @@ const stadiumName = useMemo(() => {
     setNewPollOptions((prev) => [...prev, ""]);
   };
 
-  const handlePollCreate = (event) => {
+  const handlePollCreate = async (event) => {
     event.preventDefault();
+    
+    if (!token) {
+      setError("Please sign in to create a poll.");
+      return;
+    }
+
     const trimmedTitle = newPollTitle.trim();
     const filledOptions = newPollOptions.map((o) => o.trim()).filter(Boolean);
+    
     if (!trimmedTitle || filledOptions.length < 2) {
       setError("Please add a title and at least two options.");
       return;
     }
-    const pollId = `poll-${Date.now()}`;
-    const options = filledOptions.map((label, idx) => ({
-      key: `opt-${idx}`,
-      label,
-    }));
-    const votes = options.reduce((acc, opt) => ({ ...acc, [opt.key]: 0 }), {});
-    const newPoll = {
-      id: pollId,
-      title: trimmedTitle,
-      options,
-      votes,
-      createdBy: user?.username || "Guest",
-    };
-    setPolls((prev) => [...prev, newPoll]);
-    setShowPollModal(false);
-    setError(null);
+
+    try {
+      // Create poll on backend
+      const pollData = {
+        title: trimmedTitle,
+        options: filledOptions.map((label, idx) => ({
+          key: `opt-${Date.now()}-${idx}`,
+          label,
+        })),
+      };
+
+      const newPoll = await api.createPoll(gameId, pollData, token);
+      
+      // Add to local state
+      setPolls((prev) => [...prev, newPoll]);
+      
+      // Notify other users via WebSocket
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(
+          JSON.stringify({
+            type: "poll_created",
+            poll_id: newPoll.id,
+          })
+        );
+      }
+
+      setShowPollModal(false);
+      setError(null);
+    } catch (err) {
+      console.error("Failed to create poll:", err);
+      setError("Failed to create poll. Please try again.");
+    }
   };
 
   const handleSubmit = (event) => {
@@ -293,7 +369,7 @@ const stadiumName = useMemo(() => {
     }
 
     try {
-      socketRef.current.send(JSON.stringify({ content: trimmed }));
+      socketRef.current.send(JSON.stringify({ type: "chat", content: trimmed }));
       setText("");
     } catch (err) {
       console.error("Failed to send websocket message:", err);
@@ -434,7 +510,7 @@ const stadiumName = useMemo(() => {
                 Match Polls
               </h3>
               <p className="text-sm text-slate-600">
-                Pick who takes the win. One vote per device; changing removes your previous pick.
+                Vote on polls and see what other fans think!
               </p>
             </div>
             <div className="flex items-center justify-between">
@@ -456,7 +532,8 @@ const stadiumName = useMemo(() => {
               </div>
               <button
                 onClick={openNewPollModal}
-                className="px-3 py-1 rounded bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                disabled={!user}
+                className="px-3 py-1 rounded bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
               >
                 + New Poll
               </button>
@@ -473,7 +550,7 @@ const stadiumName = useMemo(() => {
                       Poll {activePollIndex + 1} of {polls.length}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Created by {currentPoll.createdBy || "Unknown"}
+                      Created by {currentPoll.created_by || "Unknown"}
                     </p>
                   </div>
                   {currentPoll.options.map((row) => {
@@ -487,11 +564,12 @@ const stadiumName = useMemo(() => {
                       <button
                         key={row.key}
                         onClick={() => handleVote(currentPoll.id, row.key)}
+                        disabled={!user}
                         className={`w-full text-left border rounded-md px-3 py-3 transition ${
                           selected
                             ? "border-blue-600 bg-blue-50 text-blue-900"
                             : "border-slate-200 bg-white hover:border-blue-200"
-                        }`}
+                        } ${!user ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-semibold">{row.label}</span>
@@ -521,7 +599,6 @@ const stadiumName = useMemo(() => {
                 </p>
               )}
             </div>
-
           </aside>
         </div>
       </main>

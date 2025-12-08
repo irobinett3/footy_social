@@ -12,12 +12,19 @@ from fastapi import (
     status,
 )
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
-from auth import get_user_by_username, verify_token
+from auth import get_user_by_username, verify_token, get_current_user
 from database import SessionLocal, get_db
-from models import LiveGame, LiveGameMessage, User
+from models import LiveGame, LiveGameMessage, User, Poll, PollOption, PollVote
 from routers.chatbot import check_message_content
-from schemas import LiveGameMessageResponse, LiveGameResponse
+from schemas import (
+    LiveGameMessageResponse,
+    LiveGameResponse,
+    PollCreate,
+    PollResponse,
+    PollVoteRequest,
+)
 from utils import uuid_bytes_to_str
 
 logger = logging.getLogger(__name__)
@@ -61,6 +68,40 @@ class LiveGameConnectionManager:
 
 
 manager = LiveGameConnectionManager()
+
+
+def get_poll_votes_dict(db: Session, poll_id: int) -> Dict[str, int]:
+    """Get vote counts for each option in a poll."""
+    vote_counts = (
+        db.query(PollVote.option_key, func.count(PollVote.id))
+        .filter(PollVote.poll_id == poll_id)
+        .group_by(PollVote.option_key)
+        .all()
+    )
+    return {option_key: count for option_key, count in vote_counts}
+
+
+def poll_to_response(poll: Poll, db: Session) -> PollResponse:
+    """Convert a Poll model to PollResponse schema."""
+    votes_dict = get_poll_votes_dict(db, poll.id)
+    
+    # Ensure all options are in the votes dict, even if they have 0 votes
+    for option in poll.options:
+        if option.option_key not in votes_dict:
+            votes_dict[option.option_key] = 0
+    
+    return PollResponse(
+        id=poll.id,
+        game_id=poll.game_id,
+        title=poll.title,
+        created_by=poll.created_by_username,
+        options=[
+            {"key": opt.option_key, "label": opt.option_label}
+            for opt in sorted(poll.options, key=lambda x: x.display_order)
+        ],
+        votes=votes_dict,
+        created_at=poll.created_at,
+    )
 
 
 @router.get("", response_model=List[LiveGameResponse])
@@ -125,6 +166,148 @@ def get_live_game_messages(
     ]
 
 
+@router.get("/{game_id}/polls", response_model=List[PollResponse])
+def get_game_polls(
+    game_id: int,
+    db: Session = Depends(get_db),
+) -> List[PollResponse]:
+    """Get all polls for a specific game."""
+    game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
+    if game is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live game not found")
+
+    polls = (
+        db.query(Poll)
+        .filter(Poll.game_id == game_id)
+        .order_by(Poll.created_at.asc())
+        .all()
+    )
+
+    return [poll_to_response(poll, db) for poll in polls]
+
+
+@router.post("/{game_id}/polls", response_model=PollResponse)
+def create_poll(
+    game_id: int,
+    poll_data: PollCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PollResponse:
+    """Create a new poll for a game."""
+    game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
+    if game is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live game not found")
+
+    # Create the poll
+    poll = Poll(
+        game_id=game_id,
+        title=poll_data.title,
+        created_by_user_id=current_user.user_id,
+        created_by_username=current_user.username,
+    )
+    db.add(poll)
+    db.flush()  # Get the poll ID
+
+    # Create poll options
+    for idx, option in enumerate(poll_data.options):
+        poll_option = PollOption(
+            poll_id=poll.id,
+            option_key=option.key,
+            option_label=option.label,
+            display_order=idx,
+        )
+        db.add(poll_option)
+
+    db.commit()
+    db.refresh(poll)
+
+    return poll_to_response(poll, db)
+
+
+@router.post("/{game_id}/polls/{poll_id}/vote", response_model=PollResponse)
+def vote_on_poll(
+    game_id: int,
+    poll_id: int,
+    vote_data: PollVoteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PollResponse:
+    """Vote on a poll option. Changes vote if user already voted."""
+    # Verify game exists
+    game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
+    if game is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live game not found")
+
+    # Verify poll exists and belongs to this game
+    poll = db.query(Poll).filter(Poll.id == poll_id, Poll.game_id == game_id).first()
+    if poll is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Poll not found")
+
+    # Verify option exists
+    option = (
+        db.query(PollOption)
+        .filter(PollOption.poll_id == poll_id, PollOption.option_key == vote_data.option_key)
+        .first()
+    )
+    if option is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid poll option")
+
+    # Check if user already voted
+    existing_vote = (
+        db.query(PollVote)
+        .filter(PollVote.poll_id == poll_id, PollVote.user_id == current_user.user_id)
+        .first()
+    )
+
+    if existing_vote:
+        # If voting for same option, remove the vote (toggle off)
+        if existing_vote.option_key == vote_data.option_key:
+            db.delete(existing_vote)
+        else:
+            # Change vote to new option
+            existing_vote.option_key = vote_data.option_key
+            existing_vote.updated_at = datetime.utcnow()
+    else:
+        # Create new vote
+        new_vote = PollVote(
+            poll_id=poll_id,
+            user_id=current_user.user_id,
+            option_key=vote_data.option_key,
+        )
+        db.add(new_vote)
+
+    db.commit()
+    db.refresh(poll)
+
+    return poll_to_response(poll, db)
+
+
+@router.get("/{game_id}/polls/{poll_id}/user-vote")
+def get_user_vote(
+    game_id: int,
+    poll_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the current user's vote for a specific poll."""
+    # Verify poll exists and belongs to this game
+    poll = db.query(Poll).filter(Poll.id == poll_id, Poll.game_id == game_id).first()
+    if poll is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Poll not found")
+
+    # Get user's vote
+    vote = (
+        db.query(PollVote)
+        .filter(PollVote.poll_id == poll_id, PollVote.user_id == current_user.user_id)
+        .first()
+    )
+
+    if vote:
+        return {"option_key": vote.option_key}
+    else:
+        return {"option_key": None}
+
+
 @router.websocket("/ws/{game_id}")
 async def live_game_websocket(websocket: WebSocket, game_id: int) -> None:
     logger.info("WebSocket connection attempt for game_id=%s from client %s", game_id, websocket.client)
@@ -154,6 +337,11 @@ async def live_game_websocket(websocket: WebSocket, game_id: int) -> None:
             return
 
         await manager.connect(game_id, websocket, user)
+        
+        # Get all polls for this game
+        polls = db.query(Poll).filter(Poll.game_id == game_id).order_by(Poll.created_at.asc()).all()
+        polls_data = [poll_to_response(poll, db).dict() for poll in polls]
+        
         await websocket.send_json(
             {
                 "type": "welcome",
@@ -162,46 +350,80 @@ async def live_game_websocket(websocket: WebSocket, game_id: int) -> None:
                 "away_team": game.away_team,
                 "match_date": game.match_date.isoformat() if game.match_date else None,
                 "active_users": manager.get_active_count(game_id),
+                "polls": polls_data,
             }
         )
         await manager.broadcast_presence(game_id)
 
         while True:
             payload = await websocket.receive_json()
-            content = (payload or {}).get("content", "").strip()
+            message_type = payload.get("type", "chat")
+            
+            if message_type == "chat":
+                content = (payload or {}).get("content", "").strip()
 
-            if not content:
-                await websocket.send_json({"type": "error", "message": "Message cannot be empty."})
-                continue
+                if not content:
+                    await websocket.send_json({"type": "error", "message": "Message cannot be empty."})
+                    continue
 
-            is_clean, error_msg = check_message_content(content)
-            if not is_clean:
-                await websocket.send_json({"type": "error", "message": error_msg})
-                continue
+                is_clean, error_msg = check_message_content(content)
+                if not is_clean:
+                    await websocket.send_json({"type": "error", "message": error_msg})
+                    continue
 
-            now = datetime.utcnow()
-            message = LiveGameMessage(
-                game_id=game_id,
-                user_id=user.user_id,
-                content=content,
-                created_at=now,
-            )
-            db.add(message)
-            db.commit()
-            db.refresh(message)
+                now = datetime.utcnow()
+                message = LiveGameMessage(
+                    game_id=game_id,
+                    user_id=user.user_id,
+                    content=content,
+                    created_at=now,
+                )
+                db.add(message)
+                db.commit()
+                db.refresh(message)
 
-            await manager.broadcast(
-                game_id,
-                {
-                    "type": "chat_message",
-                    "message_id": message.id,
-                    "game_id": message.game_id,
-                    "user_id": uuid_bytes_to_str(message.user_id) or "",
-                    "username": user.username,
-                    "content": message.content,
-                    "created_at": message.created_at.isoformat(),
-                },
-            )
+                await manager.broadcast(
+                    game_id,
+                    {
+                        "type": "chat_message",
+                        "message_id": message.id,
+                        "game_id": message.game_id,
+                        "user_id": uuid_bytes_to_str(message.user_id) or "",
+                        "username": user.username,
+                        "content": message.content,
+                        "created_at": message.created_at.isoformat(),
+                    },
+                )
+            
+            elif message_type == "poll_created":
+                # Broadcast that a new poll was created
+                poll_id = payload.get("poll_id")
+                if poll_id:
+                    poll = db.query(Poll).filter(Poll.id == poll_id).first()
+                    if poll:
+                        poll_response = poll_to_response(poll, db)
+                        await manager.broadcast(
+                            game_id,
+                            {
+                                "type": "poll_created",
+                                "poll": poll_response.dict(),
+                            },
+                        )
+            
+            elif message_type == "poll_voted":
+                # Broadcast updated poll results
+                poll_id = payload.get("poll_id")
+                if poll_id:
+                    poll = db.query(Poll).filter(Poll.id == poll_id).first()
+                    if poll:
+                        poll_response = poll_to_response(poll, db)
+                        await manager.broadcast(
+                            game_id,
+                            {
+                                "type": "poll_updated",
+                                "poll": poll_response.dict(),
+                            },
+                        )
 
     except WebSocketDisconnect:
         manager.disconnect(game_id, websocket)

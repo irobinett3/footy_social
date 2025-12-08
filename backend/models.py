@@ -103,3 +103,46 @@ class LiveGameMessage(Base):
 
     game = relationship("LiveGame", back_populates="messages")
     user = relationship("User")
+
+
+
+class Poll(Base):
+    __tablename__ = "polls"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    game_id = Column(Integer, ForeignKey("live_games.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    created_by_user_id = Column(BINARY(16), ForeignKey("users.user_id", ondelete="SET NULL"), nullable=True)
+    created_by_username = Column(String(30), nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+
+    game = relationship("LiveGame", backref="polls")
+    created_by = relationship("User")
+    options = relationship("PollOption", back_populates="poll", cascade="all, delete-orphan")
+    votes = relationship("PollVote", back_populates="poll", cascade="all, delete-orphan")
+
+
+class PollOption(Base):
+    __tablename__ = "poll_options"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    poll_id = Column(Integer, ForeignKey("polls.id", ondelete="CASCADE"), nullable=False, index=True)
+    option_key = Column(String(50), nullable=False)
+    option_label = Column(String(255), nullable=False)
+    display_order = Column(Integer, nullable=False)
+
+    poll = relationship("Poll", back_populates="options")
+
+
+class PollVote(Base):
+    __tablename__ = "poll_votes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    poll_id = Column(Integer, ForeignKey("polls.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(BINARY(16), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    option_key = Column(String(50), nullable=False)
+    voted_at = Column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = Column(DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+
+    poll = relationship("Poll", back_populates="votes")
+    user = relationship("User")

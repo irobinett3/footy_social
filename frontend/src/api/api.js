@@ -122,4 +122,29 @@ export const api = {
     title: "Guess the Top Scorer",
     questions: [{ q: "Who scored the most goals in 2024/25 PL?", options: ["A","B","C","D"] }]
   }),
+
+
+  // Poll endpoints
+  fetchGamePolls: async (gameId) => {
+    return makeRequest(`/livegames/${gameId}/polls`);
+  },
+
+  createPoll: async (gameId, pollData, token) => {
+    return makeRequest(`/livegames/${gameId}/polls`, {
+      method: 'POST',
+      body: JSON.stringify(pollData),
+    }, token);
+  },
+
+  voteOnPoll: async (gameId, pollId, optionKey, token) => {
+    return makeRequest(`/livegames/${gameId}/polls/${pollId}/vote`, {
+      method: 'POST',
+      body: JSON.stringify({ option_key: optionKey }),
+    }, token);
+  },
+
+  getUserVote: async (gameId, pollId, token) => {
+    return makeRequest(`/livegames/${gameId}/polls/${pollId}/user-vote`, {}, token);
+  },
+  
 };

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, validator
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, List, Dict
 
 # User schemas
 class UserBase(BaseModel):
@@ -76,6 +76,42 @@ class LiveGameMessageResponse(BaseModel):
     user_id: str
     username: str
     content: str
+    created_at: datetime
+
+
+
+
+# Poll schemas
+class PollOptionCreate(BaseModel):
+    key: str
+    label: str
+
+class PollOptionResponse(BaseModel):
+    key: str
+    label: str
+
+class PollCreate(BaseModel):
+    title: str
+    options: List[PollOptionCreate]
+    
+    @validator('options')
+    def validate_options(cls, v):
+        if len(v) < 2:
+            raise ValueError('Poll must have at least 2 options')
+        if len(v) > 4:
+            raise ValueError('Poll cannot have more than 4 options')
+        return v
+
+class PollVoteRequest(BaseModel):
+    option_key: str
+
+class PollResponse(BaseModel):
+    id: int
+    game_id: int
+    title: str
+    created_by: str
+    options: List[PollOptionResponse]
+    votes: Dict[str, int]
     created_at: datetime
 
 # Authentication schemas
