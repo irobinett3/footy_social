@@ -1,11 +1,12 @@
 # routers/trivia.py
+import random
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 
 from database import get_db
 from models import Trivia
@@ -40,11 +41,16 @@ SYSTEM_PROMPT = """You are a soccer trivia generator for the English Premier Lea
 
 You will be given (player_name, season_label, goals). Create ONE multiple-choice question:
 
-- Question must be exactly: "How many goals did <player_name> score in the <season_label> Premier League season?"
+- Question must be exactly:
+  "How many goals did <player_name> score in the <season_label> Premier League season?"
 - Provide exactly one correct numeric answer (string) and three distinct plausible wrong numeric answers (strings).
 - All answers must be integers and non-negative.
-- Wrong answers should be close to the true value and all answers must be unique.
-- Return ONLY the structured fields (no extra commentary)."""
+- Wrong answers must be realistic for a Premier League season and close to the true value.
+  - Include a mix: one slightly lower, one slightly higher, and one moderately off.
+  - Do NOT use a simple sequence like (true-1, true-2, true-3) or (true+1, true+2, true+3).
+  - Avoid extremes (e.g., 0 when true is high, or huge numbers).
+- All four answers must be unique.
+- Return ONLY the structured fields (question, correct, wrong1, wrong2, wrong3). No extra commentary."""
 
 # OpenAI model (set OPENAI_API_KEY in your env)
 _llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2, max_tokens=300)
@@ -64,12 +70,53 @@ def _pick_seed(db: Session) -> Optional[dict]:
     """
     dialect = db.bind.dialect.name if db.bind else "mysql"
     rand_fn = _dialect_rand(dialect)
+    inspector = inspect(db.bind) if db.bind else None
+
+    def _has_column(table: str, column: str) -> bool:
+        if not inspector:
+            return False
+        try:
+            return any(col.get("name") == column for col in inspector.get_columns(table))
+        except Exception:
+            return False
+
+    def _season_year_expr() -> str:
+        """
+        Extract a 4-digit starting year from s.label and cast it in a dialect-safe way.
+        Assumes labels like '2014/15' or '2014-2015' or '2014 ...'
+        """
+        # SUBSTR works in both MySQL + SQLite
+        if dialect.startswith("mysql"):
+            return "CAST(SUBSTR(s.label, 1, 4) AS UNSIGNED)"
+        return "CAST(SUBSTR(s.label, 1, 4) AS INTEGER)"
+
+    has_popularity = _has_column("players", "popularity_score")
+    has_is_star = _has_column("players", "is_star")
+    has_appearances = _has_column("player_season_club_stats", "appearances")
+    has_minutes = _has_column("player_season_club_stats", "minutes")
+
+    priority_parts = []
+    if has_is_star:
+        priority_parts.append("CASE WHEN p.is_star IS NOT NULL AND p.is_star <> 0 THEN 4 ELSE 0 END")
+    if has_popularity:
+        priority_parts.append("COALESCE(p.popularity_score, 0)")
+    if has_appearances:
+        priority_parts.append("CASE WHEN ps.appearances >= 20 THEN 2 ELSE 0 END")
+    if has_minutes:
+        priority_parts.append("CASE WHEN ps.minutes >= 1200 THEN 1 ELSE 0 END")
+
+    recent_floor = datetime.now(TZ).year - 11
+    year_expr = _season_year_expr()
+    priority_parts.append(f"CASE WHEN {year_expr} >= :recent_floor THEN 1 ELSE 0 END")
+
+    bias_expr = " + ".join(priority_parts) if priority_parts else "0"
 
     sql = f"""
         SELECT
             p.full_name AS player_name,
             s.label     AS season_label,
-            ps.goals    AS goals
+            ps.goals    AS goals,
+            ({bias_expr}) AS bias_score
         FROM player_season_club_stats ps
         JOIN players p  ON p.player_id  = ps.player_id
         JOIN seasons s  ON s.season_id  = ps.season_id
@@ -78,12 +125,13 @@ def _pick_seed(db: Session) -> Optional[dict]:
           AND p.full_name <> ''
           AND p.full_name <> '<NA>'
           AND ps.goals IS NOT NULL
-          AND ps.goals >= 0
-        ORDER BY {rand_fn}
+          AND ps.goals >= 8
+        ORDER BY bias_score DESC, {rand_fn}
         LIMIT 1
     """
-    row = db.execute(text(sql)).mappings().first()
+    row = db.execute(text(sql), {"recent_floor": recent_floor}).mappings().first()
     return dict(row) if row else None
+
 
 def _validate_answers(trivia: TriviaFormat, true_goals: int) -> TriviaFormat:
     def to_int(x: Any):
@@ -113,16 +161,41 @@ def _validate_answers(trivia: TriviaFormat, true_goals: int) -> TriviaFormat:
 
     # Fallback: synthesize plausible wrong answers near truth
     base = true_goals
+    ceiling = max(60, base + 15)
+    offsets = [-6, -4, -3, -2, -1, 1, 2, 3, 4, 6, 8, 10, 12, 14]
     candidates = []
-    for d in [1, 2, 3, 4, 5, 6, 7]:
-        if base - d >= 0:
-            candidates.append(base - d)
-        candidates.append(base + d)
+    for off in offsets:
+        candidate = base + off
+        if candidate < 0 or candidate > ceiling or candidate == base:
+            continue
+        candidates.append(candidate)
+    # Add a few spaced values to reduce repetition patterns.
+    spaced = [
+        max(0, base - max(3, base // 4)),
+        min(ceiling, base + max(5, base // 3)),
+        min(ceiling, base + 14),
+        max(0, base - 8),
+    ]
+    for v in spaced:
+        if 0 <= v <= ceiling and v != base:
+            candidates.append(v)
+
     uniq = []
     for v in candidates:
-        if v != base and v not in uniq:
+        if v not in uniq and v != base:
             uniq.append(v)
-    alt = (uniq + [0, base + 8, base + 9])[:3]
+
+    if len(uniq) < 3:
+        # Fill with evenly spaced numbers in range if still short.
+        step = max(1, ceiling // 6)
+        for extra in range(0, ceiling + 1, step):
+            if extra != base and extra not in uniq:
+                uniq.append(extra)
+            if len(uniq) >= 3:
+                break
+
+    random.shuffle(uniq)
+    alt = uniq[:3]
     return TriviaFormat(
         question=trivia.question.strip() if trivia.question else "How many goals did the player score?",
         correct=str(base),
@@ -206,3 +279,11 @@ def get_daily_trivia(db: Session = Depends(get_db)):
     db.commit()
 
     return new_trivia
+
+
+@router.get("/daily/preview", response_model=TriviaOut)
+def preview_daily_trivia(db: Session = Depends(get_db)):
+    """
+    Generate a fresh trivia item without persisting it (useful for testing).
+    """
+    return _generate_trivia(db)
