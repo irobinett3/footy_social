@@ -56,9 +56,11 @@ export default function FixturesPanel({ fixtures }) {
                 </div>
               </div>
               <div className="text-right ml-4">
-                <div className="text-xs font-semibold mb-1 text-sky-700">
-                  Join
-                </div>
+                {canJoin && (
+                  <div className="text-xs font-semibold mb-1 text-sky-700">
+                    Join
+                  </div>
+                )}
               </div>
             </Wrapper>
           );

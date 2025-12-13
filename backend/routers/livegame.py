@@ -2,6 +2,7 @@ import logging
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List
+from zoneinfo import ZoneInfo
 
 from fastapi import (
     APIRouter,
@@ -16,7 +17,7 @@ from sqlalchemy import func
 
 from auth import get_user_by_username, verify_token, get_current_user
 from database import SessionLocal, get_db
-from models import LiveGame, LiveGameMessage, User, Poll, PollOption, PollVote
+from models import LiveGame, LiveGameMessage, User, Poll, PollOption, PollVote, EPLMatch
 from routers.chatbot import check_message_content
 from schemas import (
     LiveGameMessageResponse,
@@ -30,6 +31,42 @@ from utils import uuid_bytes_to_str
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/livegames", tags=["livegames"])
+LOCAL_TZ = ZoneInfo("America/Indiana/Indianapolis")
+UTC = ZoneInfo("UTC")
+
+
+def _to_local_match_time(match_date: datetime) -> datetime | None:
+    """Convert stored GMT kickoff time to the local timezone."""
+    if match_date is None:
+        return None
+    if match_date.tzinfo is None:
+        match_date = match_date.replace(tzinfo=UTC)
+    return match_date.astimezone(LOCAL_TZ)
+
+
+def _ensure_live_game(db: Session, game_id: int) -> LiveGame | None:
+    """
+    Fetch a LiveGame; if missing, hydrate it from the EPL fixtures table so the room is joinable.
+    """
+    game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
+    if game:
+        return game
+
+    fixture = db.query(EPLMatch).filter(EPLMatch.id == game_id).first()
+    if not fixture:
+        return None
+
+    # Create a LiveGame using the fixture details so users can join the room.
+    game = LiveGame(
+        id=fixture.id,
+        home_team=fixture.home_team,
+        away_team=fixture.away_team,
+        match_date=fixture.match_date,
+    )
+    db.add(game)
+    db.commit()
+    db.refresh(game)
+    return game
 
 
 class LiveGameConnectionManager:
@@ -112,7 +149,7 @@ def list_live_games(db: Session = Depends(get_db)) -> List[LiveGameResponse]:
             id=game.id,
             home_team=game.home_team,
             away_team=game.away_team,
-            match_date=game.match_date,
+            match_date=_to_local_match_time(game.match_date),
         )
         for game in games
     ]
@@ -120,7 +157,7 @@ def list_live_games(db: Session = Depends(get_db)) -> List[LiveGameResponse]:
 
 @router.get("/{game_id}", response_model=LiveGameResponse)
 def get_live_game(game_id: int, db: Session = Depends(get_db)) -> LiveGameResponse:
-    game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
+    game = _ensure_live_game(db, game_id)
     if game is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live game not found")
 
@@ -128,7 +165,7 @@ def get_live_game(game_id: int, db: Session = Depends(get_db)) -> LiveGameRespon
         id=game.id,
         home_team=game.home_team,
         away_team=game.away_team,
-        match_date=game.match_date,
+        match_date=_to_local_match_time(game.match_date),
     )
 
 
@@ -141,7 +178,7 @@ def get_live_game_messages(
     if limit <= 0 or limit > 500:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Limit must be between 1 and 500")
 
-    game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
+    game = _ensure_live_game(db, game_id)
     if game is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live game not found")
 
@@ -172,7 +209,7 @@ def get_game_polls(
     db: Session = Depends(get_db),
 ) -> List[PollResponse]:
     """Get all polls for a specific game."""
-    game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
+    game = _ensure_live_game(db, game_id)
     if game is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live game not found")
 
@@ -194,7 +231,7 @@ def create_poll(
     db: Session = Depends(get_db),
 ) -> PollResponse:
     """Create a new poll for a game."""
-    game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
+    game = _ensure_live_game(db, game_id)
     if game is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live game not found")
 
@@ -234,7 +271,7 @@ def vote_on_poll(
 ) -> PollResponse:
     """Vote on a poll option. Changes vote if user already voted."""
     # Verify game exists
-    game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
+    game = _ensure_live_game(db, game_id)
     if game is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Live game not found")
 
@@ -330,7 +367,7 @@ async def live_game_websocket(websocket: WebSocket, game_id: int) -> None:
     db = SessionLocal()
     try:
         user = get_user_by_username(db, token_data.username)
-        game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
+        game = _ensure_live_game(db, game_id)
 
         if game is None or user is None:
             await websocket.close(code=1008, reason="Live game unavailable")
@@ -341,14 +378,15 @@ async def live_game_websocket(websocket: WebSocket, game_id: int) -> None:
         # Get all polls for this game
         polls = db.query(Poll).filter(Poll.game_id == game_id).order_by(Poll.created_at.asc()).all()
         polls_data = [poll_to_response(poll, db).dict() for poll in polls]
-        
+        local_match_date = _to_local_match_time(game.match_date)
+
         await websocket.send_json(
             {
                 "type": "welcome",
                 "game_id": game_id,
                 "home_team": game.home_team,
                 "away_team": game.away_team,
-                "match_date": game.match_date.isoformat() if game.match_date else None,
+                "match_date": local_match_date.isoformat() if local_match_date else None,
                 "active_users": manager.get_active_count(game_id),
                 "polls": polls_data,
             }

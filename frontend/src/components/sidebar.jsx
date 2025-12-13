@@ -7,6 +7,13 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
   const [showAllRooms, setShowAllRooms] = useState(false);
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const now = Date.now();
+  const parseUtcDate = (value) => {
+    if (!value) return null;
+    // Backend times are stored as GMT/UTC; append Z if missing so JS treats them as UTC
+    const withZ = typeof value === "string" && !value.endsWith("Z") ? `${value}Z` : value;
+    const d = new Date(withZ);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
   
   const favoriteTeam = useMemo(
     () => (user?.favorite_team || "").trim().toLowerCase(),
@@ -72,16 +79,30 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
             <h3 className="font-semibold mb-3">Live Games</h3>
             <div className="space-y-2">
               {fixtures.live.map((f) => (
-                <div key={`live-${f.id}`} className="p-2 rounded bg-red-50 border border-red-100">
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm font-semibold text-red-700">LIVE</div>
-                    <div className="text-xs text-red-600">{f.location || "Venue TBA"}</div>
-                  </div>
-                  <div className="text-sm font-medium">{f.home} vs {f.away}</div>
-                  <div className="text-xs text-gray-600">
-                    {new Date(f.date).toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', month: 'short', day: 'numeric' })}
-                  </div>
-                </div>
+                <Link
+                  key={`live-${f.id}`}
+                  to={`/live-game/${f.id}`}
+                  className="block p-2 rounded bg-red-50 border border-red-100 hover:bg-red-100 transition-colors cursor-pointer"
+                >
+                  {(() => {
+                    const kickoff = parseUtcDate(f.date);
+                    const display = kickoff
+                      ? kickoff.toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', month: 'short', day: 'numeric' })
+                      : "Time TBA";
+                    return (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm font-semibold text-red-700">LIVE</div>
+                          <div className="text-xs text-red-600">{f.location || "Venue TBA"}</div>
+                        </div>
+                        <div className="text-sm font-medium">{f.home} vs {f.away}</div>
+                        <div className="text-xs text-gray-600">
+                          {display}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </Link>
               ))}
             </div>
           </div>
@@ -95,8 +116,9 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
             <>
               <div className="space-y-2">
                 {(showAllUpcoming ? fixtures.upcoming : fixtures.upcoming.slice(0, 5)).map((f) => {
-                  const kickoff = new Date(f.date).getTime();
-                  const within24h = kickoff >= now && kickoff - now <= 24 * 60 * 60 * 1000;
+                  const kickoffDate = parseUtcDate(f.date);
+                  const kickoffMs = kickoffDate ? kickoffDate.getTime() : NaN;
+                  const within24h = Number.isFinite(kickoffMs) && kickoffMs >= now && kickoffMs - now <= 24 * 60 * 60 * 1000;
                   const Container = within24h ? Link : "div";
                   const containerProps = within24h
                     ? { to: `/live-game/${f.id}` }
@@ -113,7 +135,9 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
                       <div>
                         <div className="text-sm font-medium">{f.home} vs {f.away}</div>
                         <div className="text-xs text-gray-500">
-                          {new Date(f.date).toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', year: 'numeric', month: 'short', day: 'numeric' })}
+                          {kickoffDate
+                            ? kickoffDate.toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', year: 'numeric', month: 'short', day: 'numeric' })
+                            : "Time TBA"}
                         </div>
                       </div>
                       {within24h && (

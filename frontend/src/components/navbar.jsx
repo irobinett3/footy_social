@@ -61,10 +61,8 @@ export default function Navbar({ onToggleSidebar }) {
           <div className="hidden sm:block text-base text-gray-400 ml-4">
             Scores • Chat • Trivia • Fan Rooms
           </div>
-        </div>
+      </div>
         <div className="flex items-center gap-4">
-          <input className="hidden md:block border rounded px-3 py-2 text-sm" placeholder="Search teams, fixtures..." />
-          
           {isAuthenticated ? (
             <div className="flex items-center gap-4">
               <span className="hidden sm:block text-base text-gray-300">

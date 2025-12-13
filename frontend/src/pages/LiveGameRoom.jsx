@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/navbar.jsx";
 import { api } from "../api/api";
 import { useAuth } from "../contexts/AuthContext";
+import { getTeamLogoUrlByName } from "../utils/teamLogos";
 
 const buildSocketUrl = (gameId, token) =>
   `ws://localhost:8000/livegames/ws/${gameId}?token=${encodeURIComponent(
@@ -36,6 +37,8 @@ export default function LiveGameRoom() {
   const [showPollModal, setShowPollModal] = useState(false);
   const [newPollTitle, setNewPollTitle] = useState("");
   const [newPollOptions, setNewPollOptions] = useState(["", ""]);
+  const [homeLogo, setHomeLogo] = useState("");
+  const [awayLogo, setAwayLogo] = useState("");
   const socketRef = useRef(null);
   const listRef = useRef(null);
 
@@ -52,6 +55,47 @@ export default function LiveGameRoom() {
     if (!game) return "";
     return game.stadium || `${game.home_team || "Home"} Stadium`;
   }, [game]);
+
+  // Team logos
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!game?.home_team && !game?.away_team) {
+        if (mounted) {
+          setHomeLogo("");
+          setAwayLogo("");
+        }
+        return;
+      }
+      const [homeUrl, awayUrl] = await Promise.all([
+        game?.home_team ? getTeamLogoUrlByName(game.home_team) : "",
+        game?.away_team ? getTeamLogoUrlByName(game.away_team) : "",
+      ]);
+      if (mounted) {
+        setHomeLogo(homeUrl);
+        setAwayLogo(awayUrl);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [game?.home_team, game?.away_team]);
+
+  const renderLogo = (team, url) => {
+    const initial = (team || "?").charAt(0).toUpperCase();
+    if (url) {
+      return (
+        <div className="w-12 h-12 rounded-full bg-white shadow ring-1 ring-slate-200 overflow-hidden flex items-center justify-center">
+          <img src={url} alt={`${team} logo`} className="w-full h-full object-contain p-1" />
+        </div>
+      );
+    }
+    return (
+      <div className="w-12 h-12 rounded-full bg-slate-200 text-slate-700 font-semibold flex items-center justify-center shadow">
+        {initial}
+      </div>
+    );
+  };
 
   // Load game data
   useEffect(() => {
@@ -400,9 +444,13 @@ export default function LiveGameRoom() {
                 <p className="text-sm uppercase tracking-wide text-slate-500">
                   Live Match Room
                 </p>
-                <h1 className="text-2xl font-semibold text-slate-900">
-                  {game.home_team} vs {game.away_team}
-                </h1>
+                <div className="flex items-center gap-3 md:gap-6 text-2xl font-semibold text-slate-900">
+                  {renderLogo(game.home_team, homeLogo)}
+                  <span className="whitespace-nowrap">{game.home_team}</span>
+                  <span className="text-base font-normal text-slate-500">vs</span>
+                  <span className="whitespace-nowrap">{game.away_team}</span>
+                  {renderLogo(game.away_team, awayLogo)}
+                </div>
                 <p className="text-sm text-slate-600">
                   Kickoff:{" "}
                   <span className="font-semibold text-slate-900">
