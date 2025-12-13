@@ -69,6 +69,8 @@ export default function TeamInfoSidebar({ teamName }) {
 
   // Get stadium and location info
   const getStadiumInfo = (teamName) => {
+    const normalize = (name) => (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
     const stadiums = {
       "Arsenal": { name: "Emirates Stadium", location: "London" },
       "Manchester City": { name: "Etihad Stadium", location: "Manchester" },
@@ -91,8 +93,46 @@ export default function TeamInfoSidebar({ teamName }) {
       "Southampton": { name: "St. Mary's Stadium", location: "Southampton" },
       "Bournemouth": { name: "Vitality Stadium", location: "Bournemouth" }
     };
+
+    const aliases = {
+      mancity: "Manchester City",
+      manchestercity: "Manchester City",
+      manutd: "Manchester United",
+      manunited: "Manchester United",
+      manchesterunited: "Manchester United",
+      spurs: "Tottenham Hotspur",
+      tottenham: "Tottenham Hotspur",
+      brighton: "Brighton & Hove Albion",
+      brightonhovealbion: "Brighton & Hove Albion",
+      wolves: "Wolverhampton Wanderers",
+      wolverhampton: "Wolverhampton Wanderers",
+      westham: "West Ham United",
+      nottinghamforest: "Nottingham Forest",
+      nottmforest: "Nottingham Forest",
+      nforest: "Nottingham Forest",
+      leicester: "Leicester City",
+      leicestercity: "Leicester City",
+      ipswich: "Ipswich Town",
+      ipswichtown: "Ipswich Town",
+      astonvilla: "Aston Villa",
+      crystalpalace: "Crystal Palace",
+      fulham: "Fulham",
+      everton: "Everton",
+      brentford: "Brentford",
+      southampton: "Southampton",
+      bournemouth: "Bournemouth",
+      liverpool: "Liverpool",
+      arsenal: "Arsenal",
+      chelsea: "Chelsea",
+    };
+
+    const normalized = normalize(teamName);
+    const canonical =
+      aliases[normalized] ||
+      Object.keys(stadiums).find((key) => normalize(key) === normalized);
     
-    return stadiums[teamName] || { name: "Unknown Stadium", location: "Unknown" };
+    const stadiumKey = canonical || teamName;
+    return stadiums[stadiumKey] || { name: "", location: "" };
   };
 
   // Get club description (you can expand this with more detailed descriptions)
@@ -142,10 +182,16 @@ export default function TeamInfoSidebar({ teamName }) {
       </h1>
       
       {/* Stadium and Location */}
-      <div className="mb-3 text-center">
-        <div className="text-sm font-medium text-gray-700">{stadiumInfo.name}</div>
-        <div className="text-xs text-gray-500">{stadiumInfo.location}</div>
-      </div>
+      {(stadiumInfo.name || stadiumInfo.location) && (
+        <div className="mb-3 text-center">
+          {stadiumInfo.name && (
+            <div className="text-sm font-medium text-gray-700">{stadiumInfo.name}</div>
+          )}
+          {stadiumInfo.location && (
+            <div className="text-xs text-gray-500">{stadiumInfo.location}</div>
+          )}
+        </div>
+      )}
 
       {/* Team Logo */}
       {teamStats.team_logo && (
@@ -210,4 +256,3 @@ export default function TeamInfoSidebar({ teamName }) {
     </aside>
   );
 }
-

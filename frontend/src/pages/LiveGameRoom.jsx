@@ -427,10 +427,10 @@ export default function LiveGameRoom() {
       <main className="flex-1 min-h-0 overflow-hidden p-6 flex flex-col gap-4">
         <button
           onClick={() => navigate("/")}
-          className="self-start inline-flex items-center gap-2 text-sm text-blue-700 hover:text-blue-800 font-semibold"
+          className="self-start inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
         >
-          <span className="inline-block w-2 h-2 rounded-full bg-blue-600" />
-          Back to Home
+          <span>←</span>
+          <span>Back to Home</span>
         </button>
         <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-md p-4 md:p-6">
           {loading ? (

@@ -8,6 +8,7 @@ const ALIASES = {
   "man utd": "manchester united",
   "manchester united": "manchester united",
   "man u": "manchester united",
+  "nott'm forest": "nottingham forest",
   "spurs": "tottenham hotspur",
   "tottenham": "tottenham hotspur",
   "tottenham hotspur": "tottenham hotspur",
@@ -51,12 +52,49 @@ const ALIASES = {
   "leicester city": "leicester city"
 };
 
+const CANONICAL_DISPLAY = {
+  "manchester city": "Manchester City",
+  "manchester united": "Manchester United",
+  "nottingham forest": "Nottingham Forest",
+  "tottenham hotspur": "Tottenham Hotspur",
+  "wolverhampton wanderers": "Wolverhampton Wanderers",
+  "brighton & hove albion": "Brighton & Hove Albion",
+  "newcastle united": "Newcastle United",
+  "aston villa": "Aston Villa",
+  "west bromwich albion": "West Bromwich Albion",
+  "west ham united": "West Ham United",
+  "chelsea": "Chelsea",
+  "arsenal": "Arsenal",
+  "liverpool": "Liverpool",
+  "fulham": "Fulham",
+  "brentford": "Brentford",
+  "everton": "Everton",
+  "burnley": "Burnley",
+  "afc bournemouth": "Bournemouth",
+  "crystal palace": "Crystal Palace",
+  "sheffield united": "Sheffield United",
+  "ipswich town": "Ipswich Town",
+  "leicester city": "Leicester City"
+};
+
 function normalizeName(name) {
   return (name || "")
     .toLowerCase()
     .replace(/\./g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+export function getCanonicalTeamName(teamName) {
+  const normalized = normalizeName(teamName);
+  const canonicalLower = ALIASES[normalized] || normalized;
+  return (
+    CANONICAL_DISPLAY[canonicalLower] ||
+    canonicalLower
+      .split(" ")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ")
+  );
 }
 
 async function loadTeams() {
@@ -94,4 +132,3 @@ export async function getTeamLogoUrlByName(teamName) {
   );
   return found ? found.logo : '';
 }
-

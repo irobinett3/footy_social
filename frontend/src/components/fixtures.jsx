@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { getCanonicalTeamName } from "../utils/teamLogos";
 
 const formatDate = (iso) =>
   new Date(iso).toLocaleString(undefined, {
@@ -40,7 +41,7 @@ export default function FixturesPanel({ fixtures }) {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <div className="font-semibold text-lg">
-                    {nextGame.home} vs {nextGame.away}
+                    {getCanonicalTeamName(nextGame.home)} vs {getCanonicalTeamName(nextGame.away)}
                   </div>
                   {live.length > 0 && live[0]?.id === nextGame.id && (
                     <span className="px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-700 border border-red-200 animate-pulse">

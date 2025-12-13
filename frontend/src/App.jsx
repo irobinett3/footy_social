@@ -167,24 +167,30 @@ function TeamFanRoomPage() {
     : undefined;
 
   const teamFixtures = useMemo(() => {
-    if (!roomForChat?.team_name || !fixtures?.upcoming) {
+    if (!roomForChat?.team_name || !fixtures) {
       return { live: [], upcoming: [] };
     }
+
     const normalize = (name) =>
       (name || "")
         .toLowerCase()
         .replace(/[^a-z0-9]/gi, "");
 
     const target = normalize(roomForChat.team_name);
-    const upcoming = fixtures.upcoming
-      .filter((f) => {
-        const home = normalize(f.home);
-        const away = normalize(f.away);
-        return home === target || away === target;
-      })
+
+    const matchTeam = (fixture) => {
+      const home = normalize(fixture.home);
+      const away = normalize(fixture.away);
+      return home === target || away === target;
+    };
+
+    const live = (fixtures.live || []).filter(matchTeam);
+
+    const upcoming = (fixtures.upcoming || [])
+      .filter(matchTeam)
       .slice(0, 3);
 
-    return { live: [], upcoming };
+    return { live, upcoming };
   }, [fixtures, roomForChat?.team_name]);
 
   const handleJoinFanRoom = useCallback(

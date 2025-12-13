@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { getCanonicalTeamName } from "../utils/teamLogos";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
@@ -95,7 +96,7 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
                           <div className="text-sm font-semibold text-red-700">LIVE</div>
                           <div className="text-xs text-red-600">{f.location || "Venue TBA"}</div>
                         </div>
-                        <div className="text-sm font-medium">{f.home} vs {f.away}</div>
+                        <div className="text-sm font-medium">{getCanonicalTeamName(f.home)} vs {getCanonicalTeamName(f.away)}</div>
                         <div className="text-xs text-gray-600">
                           {display}
                         </div>
@@ -133,7 +134,7 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
                       }`}
                     >
                       <div>
-                        <div className="text-sm font-medium">{f.home} vs {f.away}</div>
+                        <div className="text-sm font-medium">{getCanonicalTeamName(f.home)} vs {getCanonicalTeamName(f.away)}</div>
                         <div className="text-xs text-gray-500">
                           {kickoffDate
                             ? kickoffDate.toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', year: 'numeric', month: 'short', day: 'numeric' })
