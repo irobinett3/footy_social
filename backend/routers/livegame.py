@@ -33,6 +33,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/livegames", tags=["livegames"])
 LOCAL_TZ = ZoneInfo("America/Indiana/Indianapolis")
 UTC = ZoneInfo("UTC")
+SPECIAL_LIVE_GAME_ID = 999001
+SPECIAL_LIVE_GAME_HOME = "Weninger FC"
+SPECIAL_LIVE_GAME_AWAY = "Bui United"
 
 
 def _to_local_match_time(match_date: datetime) -> datetime | None:
@@ -48,6 +51,21 @@ def _ensure_live_game(db: Session, game_id: int) -> LiveGame | None:
     """
     Fetch a LiveGame; if missing, hydrate it from the EPL fixtures table so the room is joinable.
     """
+    if game_id == SPECIAL_LIVE_GAME_ID:
+        game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
+        if game:
+            return game
+        game = LiveGame(
+            id=SPECIAL_LIVE_GAME_ID,
+            home_team=SPECIAL_LIVE_GAME_HOME,
+            away_team=SPECIAL_LIVE_GAME_AWAY,
+            match_date=datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0),
+        )
+        db.add(game)
+        db.commit()
+        db.refresh(game)
+        return game
+
     game = db.query(LiveGame).filter(LiveGame.id == game_id).first()
     if game:
         return game
@@ -144,7 +162,7 @@ def poll_to_response(poll: Poll, db: Session) -> PollResponse:
 @router.get("", response_model=List[LiveGameResponse])
 def list_live_games(db: Session = Depends(get_db)) -> List[LiveGameResponse]:
     games = db.query(LiveGame).order_by(LiveGame.match_date.asc()).all()
-    return [
+    responses = [
         LiveGameResponse(
             id=game.id,
             home_team=game.home_team,
@@ -153,6 +171,17 @@ def list_live_games(db: Session = Depends(get_db)) -> List[LiveGameResponse]:
         )
         for game in games
     ]
+    special = _ensure_live_game(db, SPECIAL_LIVE_GAME_ID)
+    if special and all(resp.id != SPECIAL_LIVE_GAME_ID for resp in responses):
+        responses.append(
+            LiveGameResponse(
+                id=special.id,
+                home_team=special.home_team,
+                away_team=special.away_team,
+                match_date=_to_local_match_time(special.match_date),
+            )
+        )
+    return responses
 
 
 @router.get("/{game_id}", response_model=LiveGameResponse)
