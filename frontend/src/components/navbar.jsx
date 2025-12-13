@@ -7,7 +7,7 @@ import { getTeamLogoUrlByName } from "../utils/teamLogos";
 
 export default function Navbar({ onToggleSidebar }) {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [authMode, setAuthMode] = useState('login');
@@ -38,11 +38,6 @@ export default function Navbar({ onToggleSidebar }) {
 
   const handleProfileClick = () => {
     setShowProfile(true);
-  };
-
-  const handleLogout = () => {
-    logout();
-    setShowProfile(false);
   };
 
   return (

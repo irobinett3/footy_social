@@ -10,6 +10,8 @@ const buildSocketUrl = (gameId, token) =>
     token
   )}`;
 
+const SPECIAL_LIVE_ID = 999001;
+
 const presenceFallback = (value) =>
   typeof value === "number" && Number.isFinite(value) ? value : 0;
 
@@ -42,19 +44,21 @@ export default function LiveGameRoom() {
   const socketRef = useRef(null);
   const listRef = useRef(null);
 
+  const isSpecialGame = useMemo(() => game?.id === SPECIAL_LIVE_ID, [game?.id]);
+
   const kickoff = useMemo(() => {
-    if (!game?.match_date) return "";
+    if (!game?.match_date || isSpecialGame) return "";
     return new Date(game.match_date).toLocaleString(undefined, {
       weekday: "short",
       hour: "2-digit",
       minute: "2-digit",
     });
-  }, [game?.match_date]);
+  }, [game?.match_date, isSpecialGame]);
 
   const stadiumName = useMemo(() => {
-    if (!game) return "";
+    if (!game || isSpecialGame) return "";
     return game.stadium || `${game.home_team || "Home"} Stadium`;
-  }, [game]);
+  }, [game, isSpecialGame]);
 
   // Team logos
   useEffect(() => {
@@ -451,16 +455,18 @@ export default function LiveGameRoom() {
                   <span className="whitespace-nowrap">{game.away_team}</span>
                   {renderLogo(game.away_team, awayLogo)}
                 </div>
-                <p className="text-sm text-slate-600">
-                  Kickoff:{" "}
-                  <span className="font-semibold text-slate-900">
-                    {kickoff || "TBD"}
-                  </span>
-                  {" · "}Stadium:{" "}
-                  <span className="font-semibold text-slate-900">
-                    {stadiumName || "TBD"}
-                  </span>
-                </p>
+                {!isSpecialGame && (
+                  <p className="text-sm text-slate-600">
+                    Kickoff:{" "}
+                    <span className="font-semibold text-slate-900">
+                      {kickoff || "TBD"}
+                    </span>
+                    {" · "}Stadium:{" "}
+                    <span className="font-semibold text-slate-900">
+                      {stadiumName || "TBD"}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
           ) : (

@@ -9,6 +9,9 @@ from database import get_db
 from models import EPLMatch
 
 router = APIRouter(prefix="/api/fixtures", tags=["fixtures"])
+SPECIAL_LIVE_GAME_ID = 999001
+SPECIAL_LIVE_GAME_HOME = "Weninger FC"
+SPECIAL_LIVE_GAME_AWAY = "Bui United"
 
 
 class Fixture(BaseModel):
@@ -67,5 +70,19 @@ def get_fixtures(db: Session = Depends(get_db)) -> FixturesResponse:
 
     live = [to_fixture(m, "live") for m in live_matches]
     upcoming = [to_fixture(m, "upcoming") for m in upcoming_matches]
+
+    # Add the special always-open live game for today (no time component shown).
+    live.append(
+        Fixture(
+            id=SPECIAL_LIVE_GAME_ID,
+            home=SPECIAL_LIVE_GAME_HOME,
+            away=SPECIAL_LIVE_GAME_AWAY,
+            date=datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0),
+            location="DeBartolo Stadium",
+            result=None,
+            state="live",
+            competition="Friendly",
+        )
+    )
 
     return FixturesResponse(live=live, upcoming=upcoming)

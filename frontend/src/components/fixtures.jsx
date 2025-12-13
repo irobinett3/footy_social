@@ -2,6 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { getCanonicalTeamName } from "../utils/teamLogos";
 
+const SPECIAL_LIVE_ID = 999001;
+
 const formatDate = (iso) =>
   new Date(iso).toLocaleString(undefined, {
     hour: "numeric",
@@ -20,7 +22,7 @@ export default function FixturesPanel({ fixtures }) {
   const isLive = live.length > 0 && live[0]?.id === nextGame?.id;
   const isWithin24h =
     nextGameDate !== null && nextGameDate >= now && nextGameDate - now <= 24 * 60 * 60 * 1000;
-  const canJoin = isLive || isWithin24h;
+  const canJoin = isLive || isWithin24h || nextGame?.id === SPECIAL_LIVE_ID;
 
   return (
     <div className="bg-white rounded shadow-sm p-4">
@@ -50,7 +52,9 @@ export default function FixturesPanel({ fixtures }) {
                   )}
                 </div>
                 <div className="text-xs text-gray-600">
-                  {formatDate(nextGame.date)} · {nextGame.location || "Venue TBA"}
+                  {nextGame.id === SPECIAL_LIVE_ID
+                    ? `${new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })} · ${nextGame.location || "Venue TBA"}`
+                    : `${formatDate(nextGame.date)} · ${nextGame.location || "Venue TBA"}`}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
                   {nextGame.competition || "Premier League"}

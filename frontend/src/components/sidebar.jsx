@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { getCanonicalTeamName } from "../utils/teamLogos";
 import { useAuth } from "../contexts/AuthContext";
 
+const SPECIAL_LIVE_ID = 999001;
+
 export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
   const { user } = useAuth();
   const [showAllRooms, setShowAllRooms] = useState(false);
@@ -87,9 +89,11 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
                 >
                   {(() => {
                     const kickoff = parseUtcDate(f.date);
-                    const display = kickoff
-                      ? kickoff.toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', month: 'short', day: 'numeric' })
-                      : "Time TBA";
+                    const display = f.id === SPECIAL_LIVE_ID
+                      ? `Today · ${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                      : kickoff
+                        ? kickoff.toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', month: 'short', day: 'numeric' })
+                        : "Time TBA";
                     return (
                       <>
                         <div className="flex justify-between items-center">
@@ -119,7 +123,9 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
                 {(showAllUpcoming ? fixtures.upcoming : fixtures.upcoming.slice(0, 5)).map((f) => {
                   const kickoffDate = parseUtcDate(f.date);
                   const kickoffMs = kickoffDate ? kickoffDate.getTime() : NaN;
-                  const within24h = Number.isFinite(kickoffMs) && kickoffMs >= now && kickoffMs - now <= 24 * 60 * 60 * 1000;
+                  const within24h = f.id === SPECIAL_LIVE_ID
+                    ? true
+                    : Number.isFinite(kickoffMs) && kickoffMs >= now && kickoffMs - now <= 24 * 60 * 60 * 1000;
                   const Container = within24h ? Link : "div";
                   const containerProps = within24h
                     ? { to: `/live-game/${f.id}` }
@@ -136,9 +142,11 @@ export default function Sidebar({ fixtures, fanRooms, onSelectRoom }) {
                       <div>
                         <div className="text-sm font-medium">{getCanonicalTeamName(f.home)} vs {getCanonicalTeamName(f.away)}</div>
                         <div className="text-xs text-gray-500">
-                          {kickoffDate
-                            ? kickoffDate.toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', year: 'numeric', month: 'short', day: 'numeric' })
-                            : "Time TBA"}
+                          {f.id === SPECIAL_LIVE_ID
+                            ? new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                            : kickoffDate
+                              ? kickoffDate.toLocaleString(undefined, { hour: 'numeric', minute: 'numeric', year: 'numeric', month: 'short', day: 'numeric' })
+                              : "Time TBA"}
                         </div>
                       </div>
                       {within24h && (

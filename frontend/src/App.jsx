@@ -120,11 +120,9 @@ function TeamFanRoomPage() {
   const { roomId } = useParams();
   const numericRoomId = Number(roomId);
   const [, setSidebarOpen] = useState(false);
-  const navigate = useNavigate();
   const {
     fixtures,
     fanRooms,
-    trivia,
     handleRoomPresenceUpdate,
   } = useInitialAppData();
   const [fetchedRoom, setFetchedRoom] = useState(null);
@@ -192,13 +190,6 @@ function TeamFanRoomPage() {
 
     return { live, upcoming };
   }, [fixtures, roomForChat?.team_name]);
-
-  const handleJoinFanRoom = useCallback(
-    (targetRoomId) => {
-      navigate(`/fanroom/${targetRoomId}`);
-    },
-    [navigate]
-  );
 
   return (
     <div
