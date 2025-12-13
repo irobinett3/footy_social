@@ -240,7 +240,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter basename={process.env.PUBLIC_URL || "/"}>
+      <BrowserRouter basename={process.env.PUBLIC_URL || "/cse30246/footysocial/"}>
         <AppRoutes />
       </BrowserRouter>
     </AuthProvider>

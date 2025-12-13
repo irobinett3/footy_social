@@ -2,7 +2,7 @@
   "name": "footysocialv1-frontend",
   "version": "0.1.0",
   "private": true,
-  "homepage": "http://db8.cse.nd.edu/cse30246/footysocial/footysocialv1-frontend/",
+  "homepage": "http://db8.cse.nd.edu/cse30246/footysocial/",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
